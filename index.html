@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitness Tracker Mobile App</title>
+    <!-- REFERÊNCIA AO MANIFESTO PWA (NOVA LINHA) -->
+    <link rel="manifest" href="./manifest.json">
+    <!-- Incluindo Tailwind CSS para estilização moderna e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluindo Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Configuração de cores e fontes do Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#059669', // Verde Esmeralda Suave
+                        'primary-light': '#D1FAE5',
+                        'background': '#F9FAFB', // Fundo super clean
+                        'card-bg': '#FFFFFF',
+                        'text-default': '#1F2937',
+                        'weight-color': '#3B82F6', // Azul para peso
+                        'calorie-color': '#F59E0B', // Amarelo para calorias
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Incluindo a fonte Inter (usada por padrão no Tailwind, mas bom garantir) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos específicos para simular o container de um app mobile */
+        body {
+            background-color: '#E5E7EB'; /* Cinza claro fora do "celular" */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* O wrapper principal simula a tela do celular */
+        #app-container {
+            width: 100%;
+            max-width: 420px; /* Largura máxima típica de um smartphone */
+            min-height: 100vh;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            background-color: '#F9FAFB';
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Estilo da área de conteúdo (rolável) */
+        #content-area {
+            flex-grow: 1;
+            padding: 16px;
+            padding-bottom: 80px; /* Espaço para a barra de navegação inferior */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Suavidade no scroll em iOS */
+        }
+
+        /* Estilos para o botão de navegação ativo */
+        .nav-icon.active {
+            color: '#059669'; /* primary */
+            transform: scale(1.1);
+        }
+
+        /* Transição suave para abas */
+        .tab-content {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<div id="app-container">
+
+    <!-- Cabeçalho (Fixo) -->
+    <header class="bg-white p-4 shadow-sm z-10 flex justify-between items-center sticky top-0">
+        <h1 class="text-xl font-bold text-text-default">Fitness Tracker</h1>
+        <div id="daily-date" class="text-primary font-medium text-sm rounded-full bg-primary-light px-3 py-1 shadow-sm">
+            <!-- Data atual será inserida aqui -->
+        </div>
+    </header>
+
+    <!-- Área de Conteúdo (Variável por Aba) -->
+    <main id="content-area">
+        <!-- Resumo Diário (Visível em todas as abas, exceto Settings) -->
+        <div id="daily-summary" class="mb-6 p-4 bg-card-bg rounded-xl shadow-md border-t-4 border-primary">
+            <h2 class="text-lg font-semibold text-text-default mb-2">Resumo Diário</h2>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <!-- Caloria Consumida -->
+                <div>
+                    <p class="text-gray-500">Calorias Consumidas:</p>
+                    <p id="summary-consumed" class="font-bold text-xl text-primary-light">0 kcal</p>
+                </div>
+                <!-- Meta Restante -->
+                <div>
+                    <p class="text-gray-500">Meta Restante:</p>
+                    <p id="summary-remaining" class="font-bold text-xl text-red-500">0 kcal</p>
+                </div>
+                <!-- Status do Treino -->
+                <div>
+                    <p class="text-gray-500">Treino Status:</p>
+                    <p id="summary-workout-status" class="font-bold text-lg text-red-500">Não Registrado</p>
+                </div>
+                 <!-- Calorias Queimadas (Estimativa) -->
+                <div>
+                    <p class="text-gray-500">Calorias Queimadas (Est.):</p>
+                    <p id="summary-workout-calories" class="font-bold text-lg text-purple-600">0 kcal</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo das Abas -->
+
+        <!-- ABA 1: TREINOS -->
+        <div id="tab-workouts" class="tab-content" style="display: none;">
+            <h2 class="text-2xl font-bold text-text-default mb-4">Treinos 💪</h2>
+            
+            <!-- SELEÇÃO DE DATA PARA TREINOS -->
+            <div class="mb-4 flex items-center">
+                <label for="workout-date-select" class="text-sm font-medium text-gray-700 mr-2">Visualizar Data:</label>
+                <input type="date" id="workout-date-select" class="p-2 border border-gray-300 rounded-lg text-sm flex-grow">
+            </div>
+
+            <div id="workouts-log" class="space-y-4 mb-6">
+                <!-- Treinos registrados serão renderizados aqui -->
+            </div>
+
+            <!-- Formulário para Adicionar Exercício -->
+            <div class="p-4 bg-card-bg rounded-xl shadow-md">
+                <h3 class="text-lg font-semibold mb-3 border-b pb-2">Adicionar Novo Exercício</h3>
+                <form id="add-exercise-form" class="space-y-3">
+                    
+                    <!-- Seleção de Categoria -->
+                    <select id="exercise-category" required 
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Selecione a Categoria</option>
+                        <!-- Opções serão carregadas via JS -->
+                    </select>
+
+                    <!-- Seleção de Exercício (Dependente da Categoria) -->
+                    <select id="exercise-name" required disabled
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Selecione o Exercício</option>
+                    </select>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="exercise-sets" placeholder="Séries" required min="1"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="number" id="exercise-reps" placeholder="Repetições" required min="1"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="number" id="exercise-load" placeholder="Carga (kg)" required min="0" value="0"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <button type="submit"
+                            class="w-full bg-primary text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-opacity-90 transition duration-150">
+                        + Registrar Treino
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ABA 2: ALIMENTAÇÃO -->
+        <div id="tab-food" class="tab-content" style="display: none;">
+            <h2 class="text-2xl font-bold text-text-default mb-4">Alimentação 🍎</h2>
+
+            <!-- Seleção da Data -->
+            <div class="mb-4 flex items-center">
+                <label for="food-date-select" class="text-sm font-medium text-gray-700 mr-2">Visualizar Data:</label>
+                <input type="date" id="food-date-select" class="p-2 border border-gray-300 rounded-lg text-sm flex-grow">
+            </div>
+
+            <div id="food-log" class="space-y-4 mb-6">
+                <!-- Refeições serão renderizadas aqui -->
+            </div>
+
+            <!-- Formulário para Adicionar Refeição/Alimento -->
+            <div class="p-4 bg-card-bg rounded-xl shadow-md">
+                <h3 class="text-lg font-semibold mb-3 border-b pb-2">Registrar Alimento</h3>
+                <form id="add-meal-form" class="space-y-3">
+                    <select id="meal-type" required
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Selecione a Refeição</option>
+                        <option value="Café da Manhã">Café da Manhã</option>
+                        <option value="Almoço">Almoço</option>
+                        <option value="Jantar">Jantar</option>
+                        <option value="Lanche">Lanche/Outros</option>
+                    </select>
+                    
+                    <!-- Busca e Quantidade -->
+                    <input type="text" id="food-name-input" placeholder="Buscar Alimento (ex: Frango)" required list="food-list"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    <datalist id="food-list">
+                        <!-- Opções de alimentos da base de dados (FOOD_DATABASE) serão injetadas aqui -->
+                    </datalist>
+
+                    <input type="number" id="food-quantity" placeholder="Quantidade (g/unidades)" required min="1" value="100"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    
+                    <!-- Visualização de Cálculo Automático -->
+                    <div id="food-preview" class="p-3 bg-primary-light rounded-lg text-sm border border-primary">
+                        <p class="font-semibold text-text-default mb-1">Estimativa de Macros (Calculado):</p>
+                        <p id="preview-calories" class="text-xl font-extrabold text-primary">0 kcal</p>
+                        <p class="text-xs text-gray-700">P: <span id="preview-protein">0</span>g | C: <span id="preview-carbs">0</span>g | G: <span id="preview-fats">0</span>g</p>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-primary text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-opacity-90 transition duration-150">
+                        + Adicionar Refeição
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ABA 3: PROGRESSO -->
+        <div id="tab-progress" class="tab-content" style="display: none;">
+            <h2 class="text-2xl font-bold text-text-default mb-4">Progresso 📈</h2>
+
+            <!-- Input de Peso Corporal COM SELETOR DE DATA -->
+            <div class="p-4 bg-card-bg rounded-xl shadow-md mb-6">
+                <h3 class="text-lg font-semibold mb-2">Acompanhamento de Peso</h3>
+                <form id="add-weight-form" class="space-y-3">
+                    <div class="flex gap-2 items-center">
+                        <label for="weight-date-select" class="text-sm font-medium text-gray-700 mr-2">Data do Peso:</label>
+                        <input type="date" id="weight-date-select" class="p-2 border border-gray-300 rounded-lg text-sm flex-grow">
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" id="current-weight" placeholder="Seu peso (kg)" required min="30" step="0.1"
+                               class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <button type="submit"
+                                class="bg-primary text-white p-3 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
+                            Registrar
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Exibição do peso para a data selecionada -->
+                <div id="selected-weight-display" class="mt-4 border-t pt-3 text-lg font-bold text-center">
+                    <!-- Peso para a data selecionada será exibido aqui -->
+                </div>
+            </div>
+
+            <!-- Gráficos Reais -->
+            <div class="space-y-6">
+                <div class="p-4 bg-card-bg rounded-xl shadow-md">
+                    <h3 class="text-lg font-semibold mb-2 text-weight-color">Evolução de Peso</h3>
+                    <div class="h-64">
+                        <canvas id="weightChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-card-bg rounded-xl shadow-md">
+                    <h3 class="text-lg font-semibold mb-2 text-calorie-color">Balanço Calórico (Últimos 30 dias)</h3>
+                    <div class="h-64">
+                        <canvas id="calorieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 4: CONFIGURAÇÕES -->
+        <div id="tab-settings" class="tab-content" style="display: none;">
+            <h2 class="text-2xl font-bold text-text-default mb-4">Configurações ⚙️</h2>
+
+            <!-- CALCULAR TDEE -->
+            <div class="p-4 bg-card-bg rounded-xl shadow-md mb-6 border-l-4 border-green-500">
+                <h3 class="text-xl font-semibold mb-3 text-green-700">Calculadora de Gasto Calórico (TDEE)</h3>
+                <form id="tdee-calculator-form" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <select id="calc-gender" required 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Gênero</option>
+                            <option value="male">Masculino</option>
+                            <option value="female">Feminino</option>
+                        </select>
+                        <input type="number" id="calc-age" placeholder="Idade (anos)" required min="15" max="100"
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="number" id="calc-height" placeholder="Altura (cm)" required min="100"
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="number" id="calc-weight" placeholder="Peso (kg)" required min="30" step="0.1"
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <select id="calc-activity" required
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Nível de Atividade</option>
+                        <option value="1.2">Sedentário (Pouco/Nenhum exercício)</option>
+                        <option value="1.375">Leve (1-3 dias/semana)</option>
+                        <option value="1.55">Moderado (3-5 dias/semana)</option>
+                        <option value="1.725">Intenso (6-7 dias/semana)</option>
+                        <option value="1.9">Extremo (Diário + trabalho físico)</option>
+                    </select>
+
+                    <button type="submit"
+                            class="w-full bg-green-500 text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-green-600 transition duration-150">
+                        Calcular e Definir Meta
+                    </button>
+                </form>
+
+                <div id="tdee-results" class="mt-4 p-3 bg-green-50 rounded-lg hidden">
+                    <p class="font-semibold text-sm text-green-800">Seu Gasto Calórico Estimado:</p>
+                    <p id="result-bmr" class="text-xs text-gray-700">BMR (Metabolismo Basal): -</p>
+                    <p id="result-tdee" class="text-2xl font-extrabold text-green-700 mt-1">TDEE: 0 kcal/dia</p>
+                    <p id="result-message" class="text-xs mt-2 text-green-600 font-medium">A meta foi atualizada.</p>
+                </div>
+            </div>
+
+
+            <!-- AJUSTAR META CALÓRICA (Manteve-se a área para ajuste manual, caso prefira) -->
+            <div class="p-4 bg-card-bg rounded-xl shadow-md mb-6">
+                <h3 class="text-xl font-semibold mb-3 text-text-default">Meta Calórica Atual</h3>
+                <p id="current-goal-display" class="mt-3 text-lg font-bold text-primary">Meta Atual: 2000 kcal</p>
+                
+                <form id="set-goal-form" class="flex gap-2 mt-4">
+                    <input type="number" id="calorie-goal-input" placeholder="Ajuste Manual (kcal)" required min="1000"
+                           class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    <button type="submit"
+                            class="bg-primary text-white p-3 rounded-lg font-semibold shadow-lg hover:bg-opacity-90 transition duration-150">
+                        Salvar Manual
+                    </button>
+                </form>
+            </div>
+
+            <!-- Formulário/Botão de Reset -->
+            <div class="p-4 bg-card-bg rounded-xl shadow-md">
+                <h3 class="text-xl font-semibold mb-3 text-text-default">Gerenciamento de Dados</h3>
+                <button id="reset-data-button"
+                        class="w-full bg-red-500 text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-red-600 transition duration-150">
+                    ⚠️ Resetar Todos os Dados
+                </button>
+                <p class="mt-2 text-xs text-red-700 text-center">Isso apagará permanentemente todos os seus dados salvos no navegador.</p>
+
+                <!-- Modal de Confirmação (Simulado) -->
+                <div id="reset-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+                        <p class="text-lg font-bold mb-4">Confirmar Exclusão</p>
+                        <p class="mb-6">Tem certeza que deseja apagar todos os dados de treinos e alimentação?</p>
+                        <div class="flex justify-end gap-3">
+                            <button id="cancel-reset" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cancelar</button>
+                            <button id="confirm-reset" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Barra de Navegação Inferior (Fixo) -->
+    <footer id="nav-bar" class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 max-w-md mx-auto shadow-2xl">
+        <nav class="flex justify-around p-3">
+            <button class="nav-icon flex flex-col items-center text-gray-400 active" data-tab="workouts">
+                <!-- Icone de Halteres (Treinos) -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 20V4l6 8-6 8zM19 12h-2m-3 0H5"/>
+                </svg>
+                <span class="text-xs mt-1">Treinos</span>
+            </button>
+            <button class="nav-icon flex flex-col items-center text-gray-400" data-tab="food">
+                <!-- Icone de Maçã (Alimentação) -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM12 18a4 4 0 100-8 4 4 0 000 8z"/>
+                </svg>
+                <span class="text-xs mt-1">Alimentação</span>
+            </button>
+            <button class="nav-icon flex flex-col items-center text-gray-400" data-tab="progress">
+                <!-- Icone de Gráfico (Progresso) -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+                <span class="text-xs mt-1">Progresso</span>
+            </button>
+            <button class="nav-icon flex flex-col items-center text-gray-400" data-tab="settings">
+                <!-- Icone de Configurações -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.562.344 1.067.653 1.067.653z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span class="text-xs mt-1">Config.</span>
+            </button>
+        </nav>
+    </footer>
+</div>
+
+<script>
+    // Variáveis Globais de Estado
+    const STORAGE_KEY = 'fitnessTrackerData';
+    let appData = {
+        calorieGoal: 2000,
+        currentDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        dailyLogs: {}, // Estrutura: { 'YYYY-MM-DD': { workouts: [], meals: [], isWorkoutDone: false, workoutCalories: 0 } }
+        weightHistory: [], // Estrutura: [{ date: 'YYYY-MM-DD', weight: 75.5 }]
+        calcInputs: {} // Para salvar os últimos inputs da calculadora (opcional)
+    };
+
+    // Variáveis de Gráfico
+    let weightChartInstance = null;
+    let calorieChartInstance = null;
+
+    // --- BANCO DE DADOS DE ALIMENTOS (BASEADO NA TACO - Apenas Comestíveis/Prontos) ---
+    // Estrutura: { nome: { calories: Kcal/porção, protein: g/porção, carbs: g/porção, fats: g/porção, unit: unidade_medida, portion: tamanho_base, category: categoria_taco } }
+    const FOOD_DATABASE = {
+        // --- CEREAIS E DERIVADOS (Valores por 100g) ---
+        'Arroz, Integral, Cozido': { calories: 124, protein: 2.6, carbs: 25.8, fats: 1.0, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Arroz, Tipo 1, Cozido': { calories: 128, protein: 2.5, carbs: 28.1, fats: 0.2, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Aveia, Flocos, Crua': { calories: 394, protein: 13.9, carbs: 66.6, fats: 8.5, unit: 'g', portion: 100, category: 'Cereais e Derivados' }, // Flocos é consumido pronto ou cozido
+        'Biscoito, Doce, Maisena': { calories: 443, protein: 8.1, carbs: 75.2, fats: 12.0, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Canjica, com Leite Integral': { calories: 112, protein: 2.4, carbs: 23.6, fats: 1.2, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Cereal Matinal, Milho (Açúcar)': { calories: 377, protein: 4.7, carbs: 88.8, fats: 0.7, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Macarrão, Lasanha, Cozida': { calories: 164, protein: 5.8, carbs: 32.5, fats: 1.2, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Pamonha, Pré-cozida': { calories: 171, protein: 2.6, carbs: 30.7, fats: 4.8, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Pão, Trigo, Integral': { calories: 253, protein: 9.4, carbs: 49.9, fats: 3.7, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Pão, Trigo, Francês': { calories: 300, protein: 8.0, carbs: 58.6, fats: 3.1, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Pastel, de Carne, Frito': { calories: 388, protein: 10.1, carbs: 43.8, fats: 20.1, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        'Pipoca, com Óleo de Soja': { calories: 448, protein: 9.9, carbs: 70.3, fats: 15.9, unit: 'g', portion: 100, category: 'Cereais e Derivados' },
+        
+        // --- HORTALIÇAS E DERIVADOS (Valores por 100g) ---
+        'Abóbora, Cabotian, Cozida': { calories: 48, protein: 1.4, carbs: 10.8, fats: 0.7, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Abóbora, Moranga, Refogada': { calories: 29, protein: 0.4, carbs: 6.0, fats: 0.8, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Abobrinha, Italiana, Cozida': { calories: 15, protein: 1.1, carbs: 3.0, fats: 0.2, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Alho, Cru': { calories: 113, protein: 7.0, carbs: 23.9, fats: 0.2, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' }, // Usado como tempero
+        'Almeirão, Refogado': { calories: 65, protein: 1.7, carbs: 5.7, fats: 4.8, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Batata, Doce, Cozida': { calories: 77, protein: 0.6, carbs: 18.4, fats: 0.1, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Batata, Inglesa, Cozida': { calories: 52, protein: 1.2, carbs: 11.9, fats: 0.0, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Batata, Frita (Chips Ind.)': { calories: 543, protein: 5.6, carbs: 51.2, fats: 36.6, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Brócolis, Cozido': { calories: 25, protein: 2.1, carbs: 4.4, fats: 0.5, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Cenoura, Cozida': { calories: 30, protein: 0.8, carbs: 6.7, fats: 0.2, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Chuchu, Cozido': { calories: 19, protein: 0.4, carbs: 4.8, fats: 0.0, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Couve, Manteiga, Refogada': { calories: 90, protein: 1.7, carbs: 8.7, fats: 6.6, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        'Tomate, Molho Industrializado': { calories: 38, protein: 1.4, carbs: 7.7, fats: 0.9, unit: 'g', portion: 100, category: 'Hortaliças e Derivados' },
+        
+        // --- FRUTAS E DERIVADOS (Valores por 100g) ---
+        'Abacate, Cru': { calories: 96, protein: 1.2, carbs: 6.0, fats: 8.4, unit: 'g', portion: 100, category: 'Frutas e Derivados' }, // Geralmente consumido cru
+        'Abacaxi, Cru': { calories: 48, protein: 0.9, carbs: 12.3, fats: 0.1, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+        'Acerola, Polpa Congelada': { calories: 22, protein: 0.6, carbs: 5.5, fats: 0.0, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+        'Banana, Prata, Crua': { calories: 98, protein: 1.3, carbs: 26.0, fats: 0.1, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+        'Goiaba, Doce em Pasta': { calories: 269, protein: 0.6, carbs: 74.1, fats: 0.0, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+        'Laranja, Pêra, Suco': { calories: 33, protein: 0.7, carbs: 7.6, fats: 0.1, unit: 'mL', portion: 100, category: 'Frutas e Derivados' },
+        'Mamão, Formosa, Cru': { calories: 45, protein: 0.8, carbs: 11.6, fats: 0.1, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+        'Manga, Palmer, Crua': { calories: 72, protein: 0.4, carbs: 19.4, fats: 0.2, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+        'Morango, Cru': { calories: 30, protein: 0.9, carbs: 6.8, fats: 0.3, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+        'Pupunha, Cozida': { calories: 219, protein: 2.5, carbs: 29.6, fats: 12.8, unit: 'g', portion: 100, category: 'Frutas e Derivados' },
+
+        // --- GORDURAS E ÓLEOS (Valores por 100g) ---
+        'Azeite, de Oliva, Extra Virgem': { calories: 884, protein: 0.0, carbs: 0.0, fats: 100.0, unit: 'g', portion: 10, category: 'Gorduras e Óleos' }, // Porção 10g (1 colher de sopa)
+        'Óleo, de Soja': { calories: 884, protein: 0.0, carbs: 0.0, fats: 100.0, unit: 'g', portion: 10, category: 'Gorduras e Óleos' },
+        'Manteiga, com Sal': { calories: 726, protein: 0.4, carbs: 0.1, fats: 82.4, unit: 'g', portion: 10, category: 'Gorduras e Óleos' },
+        'Margarina (65% Lip.)': { calories: 596, protein: 0.0, carbs: 0.0, fats: 67.4, unit: 'g', portion: 10, category: 'Gorduras e Óleos' },
+        
+        // --- PESCADOS E FRUTOS DO MAR (Valores por 100g) ---
+        'Salmão, Grelhado, Sem Pele': { calories: 243, protein: 26.1, carbs: 0.0, fats: 14.5, unit: 'g', portion: 100, category: 'Pescados e Frutos do Mar' },
+        'Atum, Conserva em Óleo (Drenado)': { calories: 166, protein: 26.2, carbs: 0.0, fats: 6.0, unit: 'g', portion: 100, category: 'Pescados e Frutos do Mar' },
+        'Merluza, Filé, Frito': { calories: 192, protein: 26.9, carbs: 0.0, fats: 8.5, unit: 'g', portion: 100, category: 'Pescados e Frutos do Mar' },
+        'Camarão, Cozido (Grande)': { calories: 90, protein: 19.0, carbs: 0.0, fats: 1.0, unit: 'g', portion: 100, category: 'Pescados e Frutos do Mar' },
+        'Sardinha, Assada': { calories: 164, protein: 32.2, carbs: 0.0, fats: 3.0, unit: 'g', portion: 100, category: 'Pescados e Frutos do Mar' },
+
+        // --- CARNES E DERIVADOS (Valores por 100g) ---
+        'Carne Bovina, Patinho, Grelhado': { calories: 219, protein: 35.9, carbs: 0.0, fats: 7.3, unit: 'g', portion: 100, category: 'Carnes e Derivados' },
+        'Carne Bovina, Filé Mignon, Grelhado': { calories: 220, protein: 32.8, carbs: 0.0, fats: 8.8, unit: 'g', portion: 100, category: 'Carnes e Derivados' },
+        'Frango, Peito, Cozido, Sem Pele': { calories: 163, protein: 31.5, carbs: 0.0, fats: 3.2, unit: 'g', portion: 100, category: 'Carnes e Derivados' },
+        'Frango, Coxa, Cozida, Sem Pele': { calories: 167, protein: 26.9, carbs: 0.0, fats: 5.8, unit: 'g', portion: 100, category: 'Carnes e Derivados' },
+        'Porco, Lombo, Assado': { calories: 210, protein: 35.7, carbs: 0.0, fats: 6.4, unit: 'g', portion: 100, category: 'Carnes e Derivados' },
+        'Presunto, Sem Gordura': { calories: 94, protein: 14.3, carbs: 2.1, fats: 2.7, unit: 'g', portion: 100, category: 'Carnes e Derivados' },
+        'Hambúrguer, Frito': { calories: 258, protein: 20.0, carbs: 6.3, fats: 17.0, unit: 'g', portion: 100, category: 'Carnes e Derivados' },
+        
+        // --- LEITE E DERIVADOS (Valores por 100g) ---
+        'Leite, Integral, UHT': { calories: 61, protein: 3.0, carbs: 4.7, fats: 3.2, unit: 'mL', portion: 100, category: 'Leite e Derivados' },
+        'Leite, Desnatado, UHT': { calories: 37, protein: 3.4, carbs: 4.9, fats: 0.1, unit: 'mL', portion: 100, category: 'Leite e Derivados' },
+        'Iogurte, Natural, Desnatado': { calories: 41, protein: 3.8, carbs: 5.8, fats: 0.3, unit: 'g', portion: 100, category: 'Leite e Derivados' },
+        'Queijo, Minas Frescal': { calories: 264, protein: 17.4, carbs: 3.2, fats: 20.2, unit: 'g', portion: 100, category: 'Leite e Derivados' },
+        'Queijo, Mussarela': { calories: 330, protein: 22.6, carbs: 3.0, fats: 25.2, unit: 'g', portion: 100, category: 'Leite e Derivados' },
+        'Requeijão, Cremoso': { calories: 257, protein: 9.6, carbs: 2.4, fats: 23.4, unit: 'g', portion: 100, category: 'Leite e Derivados' },
+        'Leite, Condensado': { calories: 313, protein: 7.7, carbs: 57.0, fats: 6.7, unit: 'g', portion: 100, category: 'Leite e Derivados' },
+
+        // --- OVOS E DERIVADOS ---
+        'Ovo de Galinha, Cozido': { calories: 146, protein: 13.3, carbs: 0.6, fats: 9.5, unit: 'unidade', portion: 50, category: 'Ovos e Derivados' },
+        'Omelete, de Queijo': { calories: 268, protein: 15.6, carbs: 0.4, fats: 22.0, unit: 'g', portion: 100, category: 'Ovos e Derivados' },
+
+        // --- LEGUMINOSAS E DERIVADOS (Valores por 100g) ---
+        'Feijão, Carioca, Cozido': { calories: 76, protein: 4.8, carbs: 13.6, fats: 0.5, unit: 'g', portion: 100, category: 'Leguminosas e Derivados' },
+        'Feijão, Preto, Cozido': { calories: 77, protein: 4.5, carbs: 14.0, fats: 0.5, unit: 'g', portion: 100, category: 'Leguminosas e Derivados' },
+        'Lentilha, Cozida': { calories: 93, protein: 6.3, carbs: 16.3, fats: 0.5, unit: 'g', portion: 100, category: 'Leguminosas e Derivados' },
+        'Ervilha, Enlatada (Drenada)': { calories: 74, protein: 4.6, carbs: 13.4, fats: 0.4, unit: 'g', portion: 100, category: 'Leguminosas e Derivados' },
+        'Tofu (Queijo de Soja)': { calories: 64, protein: 6.6, carbs: 2.1, fats: 4.0, unit: 'g', portion: 100, category: 'Leguminosas e Derivados' },
+
+        // --- NOZES E SEMENTES (Valores por 100g) ---
+        'Amendoim, Torrado Salgado': { calories: 606, protein: 22.5, carbs: 18.7, fats: 54.0, unit: 'g', portion: 100, category: 'Nozes e Sementes' },
+        'Castanha-de-Caju, Torrada': { calories: 570, protein: 18.5, carbs: 29.1, fats: 46.3, unit: 'g', portion: 100, category: 'Nozes e Sementes' },
+        'Coco, Cru': { calories: 406, protein: 3.7, carbs: 10.4, fats: 42.0, unit: 'g', portion: 100, category: 'Nozes e Sementes' }, // Comestível cru
+        'Pinhão, Cozido': { calories: 174, protein: 3.0, carbs: 43.9, fats: 0.7, unit: 'g', portion: 100, category: 'Nozes e Sementes' },
+        
+        // --- PRODUTOS AÇUCARADOS ---
+        'Açúcar, Refinado': { calories: 387, protein: 0.3, carbs: 99.5, fats: 0.0, unit: 'g', portion: 10, category: 'Produtos Açucarados' },
+        'Mel, de Abelha': { calories: 309, protein: 0.0, carbs: 84.0, fats: 0.0, unit: 'g', portion: 10, category: 'Produtos Açucarados' },
+        'Chocolate, Meio Amargo': { calories: 475, protein: 4.9, carbs: 62.4, fats: 29.9, unit: 'g', portion: 100, category: 'Produtos Açucarados' },
+        'Doce, de Leite, Cremoso': { calories: 306, protein: 5.5, carbs: 59.5, fats: 6.0, unit: 'g', portion: 100, category: 'Produtos Açucarados' },
+
+        // --- ALIMENTOS PREPARADOS/MISTOS ---
+        'Arroz Carreteiro': { calories: 154, protein: 10.8, carbs: 11.6, fats: 7.1, unit: 'g', portion: 100, category: 'Alimentos Preparados/Mistos' },
+        'Feijoada': { calories: 117, protein: 8.7, carbs: 11.6, fats: 6.5, unit: 'g', portion: 100, category: 'Alimentos Preparados/Mistos' },
+        'Salpicão de Frango': { calories: 148, protein: 13.9, carbs: 4.6, fats: 7.8, unit: 'g', portion: 100, category: 'Alimentos Preparados/Mistos' },
+        'Macarrão, Molho Bolognesa': { calories: 120, protein: 4.9, carbs: 22.5, fats: 0.9, unit: 'g', portion: 100, category: 'Alimentos Preparados/Mistos' },
+        'Vatapá': { calories: 255, protein: 6.0, carbs: 9.7, fats: 23.2, unit: 'g', portion: 100, category: 'Alimentos Preparados/Mistos' },
+    };
+    
+    // --- BASE DE DADOS DE EXERCÍCIOS EXPANDIDA E ATUALIZADA ---
+    const EXERCISE_DATABASE = {
+        'Peito': [
+            'Supino Reto com Barra', 'Supino Inclinado com Halteres', 'Crossover Alto', 
+            'Flexão de Braço', 'Supino Declinado', 'Crucifixo com Halteres', 'Pec Deck',
+            'Supino Reto Halteres', 'Flexão Diamante', 
+            'Supino Máquina', 
+            'Crucifixo Máquina'
+        ],
+        'Costas': [
+            'Remada Curvada com Barra', 'Puxada Frontal (Pulley)', 'Levantamento Terra', 
+            'Remada Cavalinho', 'Serrote (Remada Unilateral)', 'Pull Down', 'Hiperextensão Lombar',
+            'Remada Sentada (Cabo)', 'Barra Fixa (Assistida/Livre)',
+            'Puxada Alta', 
+            'Puxada Baixa'
+        ],
+        'Pernas': [
+            'Agachamento Livre', 'Leg Press 45º', 'Cadeira Extensora', 'Mesa Flexora', 
+            'Panturrilha no Smith', 'Agachamento Búlgaro', 'Stiff', 'Cadeira Adutora/Abdutora',
+            'Hack Machine', 'Afundo com Halteres',
+            'Cadeira Flexora', 
+            'Cadeira Extensora', 
+            'Cadeira Abdutora', 
+            'Cadeira Adutora', 
+            'Panturrilha Cavalinho'
+        ],
+        'Ombros': [
+            'Desenvolvimento Militar em pé', 'Elevação Lateral', 'Elevação Frontal', 
+            'Remada Alta', 'Face Pull', 'Desenvolvimento Arnold', 'Crucifixo Inverso',
+            'Desenvolvimento com Halteres', 'Remada Alta (Cabo)',
+            'Desenvolvimento Máquina', 
+            'Encolhimento'
+        ],
+        'Braços (Bíceps/Tríceps)': [
+            'Rosca Direta com Barra', 'Tríceps Corda', 'Rosca Martelo', 'Tríceps Testa', 
+            'Rosca Concentrada', 'Paralelas (Tríceps)', 'Rosca Scott', 'Tríceps Supinado',
+            'Rosca Alternada', 'Extensão de Tríceps por cima da cabeça',
+            'Tríceps Barra', 
+            'Tríceps Barra W', 
+            'Rosca Alternada 45°'
+        ],
+        'Abdômen/Core': [
+            'Abdominal no Solo', 'Prancha (30s)', 'Elevação de Pernas', 'Rotação Russa', 
+            'Abdominal Infra na Paralela', 'Abdominal na Máquina', 'Prancha Lateral (30s)',
+            'Crunch no Cabo'
+        ],
+        'Antebraço': [ 
+            'Rosca Punho com Barra', 
+            'Rosca Punho na Polia', 
+            'Rosca Punho Invertida na Polia'
+        ],
+        'Cardio': [
+            'Corrida 30min (Est. 250 Kcal)', 'Bicicleta 30min (Est. 250 Kcal)', 
+            'Elíptico 30min (Est. 250 Kcal)', 'HIIT 20min (Est. 300 Kcal)', 
+            'Natação 30min (Est. 350 Kcal)', 'Pular Corda 15min (Est. 150 Kcal)'
+        ]
+    };
+
+    // --- FUNÇÕES DE UTILIDADE ---
+
+    /**
+     * Formata a data ISO (YYYY-MM-DD) para um formato legível.
+     * @param {string} isoDate - Data no formato ISO.
+     * @returns {string} Data formatada (ex: Terça, 01/Jan)
+     */
+    function formatDisplayDate(isoDate) {
+        const date = new Date(isoDate + 'T00:00:00'); // Adiciona T00:00:00 para evitar problemas de fuso horário
+        const options = { weekday: 'short', day: '2-digit', month: 'short' };
+        return date.toLocaleDateString('pt-BR', options).replace('.', '');
+    }
+
+    /**
+     * Garante que o log diário para a data atual existe e inicializa workoutCalories.
+     */
+    function getCurrentDayLog(date = appData.currentDate) {
+        if (!appData.dailyLogs[date]) {
+            appData.dailyLogs[date] = { workouts: [], meals: [], isWorkoutDone: false, workoutCalories: 0 };
+        }
+        // Garante que o campo workoutCalories existe (para retrocompatibilidade)
+        if (typeof appData.dailyLogs[date].workoutCalories === 'undefined') {
+            appData.dailyLogs[date].workoutCalories = 0;
+        }
+        return appData.dailyLogs[date];
+    }
+
+    // --- PERSISTÊNCIA (Local Storage) ---
+
+    /**
+     * Carrega os dados do LocalStorage e inicializa o estado.
+     */
+    function loadData() {
+        try {
+            const storedData = localStorage.getItem(STORAGE_KEY);
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                // Mescla os dados salvos com a estrutura padrão para evitar erros
+                appData = { ...appData, ...parsedData };
+            }
+            // Seta a data atual no seletor de data da aba Alimentação, Treinos e Peso
+            const today = new Date().toISOString().split('T')[0];
+            appData.currentDate = today;
+            document.getElementById('food-date-select').value = today;
+            document.getElementById('workout-date-select').value = today;
+            document.getElementById('weight-date-select').value = today; // Inicializa o seletor de data de peso
+        } catch (error) {
+            console.error("Erro ao carregar dados do LocalStorage:", error);
+        }
+    }
+
+    /**
+     * Salva o estado atual no LocalStorage.
+     */
+    function saveData() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        } catch (error) {
+            console.error("Erro ao salvar dados no LocalStorage:", error);
+        }
+    }
+
+    // --- LÓGICA DE CÁLCULO DE ENERGIA ---
+    
+    /**
+     * Calcula o Metabolismo Basal (BMR) usando a fórmula de Mifflin-St Jeor.
+     * @param {string} gender - 'male' ou 'female'.
+     * @param {number} weight - Peso em kg.
+     * @param {number} height - Altura em cm.
+     * @param {number} age - Idade em anos.
+     * @returns {number} BMR em kcal.
+     */
+    function calculateBMR(gender, weight, height, age) {
+        if (gender === 'male') {
+            // BMR Homem = (10 * peso_kg) + (6.25 * altura_cm) - (5 * idade_anos) + 5
+            return Math.round((10 * weight) + (6.25 * height) - (5 * age) + 5);
+        } else if (gender === 'female') {
+            // BMR Mulher = (10 * peso_kg) + (6.25 * altura_cm) - (5 * idade_anos) - 161
+            return Math.round((10 * weight) + (6.25 * height) - (5 * age) - 161);
+        }
+        return 0;
+    }
+
+    /**
+     * Calcula o Gasto Calórico Total Diário (TDEE).
+     * @param {number} bmr - Metabolismo Basal em kcal.
+     * @param {number} activityMultiplier - Multiplicador de atividade.
+     * @returns {number} TDEE em kcal.
+     */
+    function calculateTDEE(bmr, activityMultiplier) {
+        return Math.round(bmr * activityMultiplier);
+    }
+
+    /**
+     * Calcula a estimativa de calorias queimadas por um exercício de força.
+     * @param {number} sets - Número de séries.
+     * @param {number} reps - Número de repetições.
+     * @param {number} load - Carga em kg.
+     * @returns {number} Calorias estimadas (arredondado).
+     */
+    function estimateStrengthWorkoutCalories(sets, reps, load) {
+        // Fator de estimativa ajustado para reduzir a inflação de calorias em treinos de força.
+        const baseBurn = 15;
+        const loadFactor = 0.02; 
+        return Math.round(baseBurn + (sets * reps * load * loadFactor));
+    }
+
+    /**
+     * Calcula a estimativa total de calorias queimadas no dia ATUAL.
+     * @returns {number} Total de calorias queimadas.
+     */
+    function calculateTotalWorkoutCalories() {
+        const dayLog = getCurrentDayLog();
+        let totalCalories = 0;
+
+        dayLog.workouts.forEach(ex => {
+            if (ex.category === 'Cardio') {
+                // Para cardio, tenta extrair o valor da estimativa do nome
+                const match = ex.name.match(/\(([\d]+)\sKcal\)/);
+                totalCalories += match ? parseInt(match[1]) : 250; 
+            } else {
+                // Força usa a estimativa baseada em sets, reps e load
+                totalCalories += estimateStrengthWorkoutCalories(ex.sets, ex.reps, ex.load);
+            }
+        });
+
+        dayLog.workoutCalories = totalCalories;
+        return totalCalories;
+    }
+
+    /**
+     * Calcula o total de calorias e macros consumidos no dia ATUAL.
+     * @returns {{calories: number, protein: number, carbs: number, fats: number}}
+     */
+    function calculateDailyTotals() {
+        const dayLog = getCurrentDayLog();
+        return dayLog.meals.reduce((totals, meal) => {
+            totals.calories += parseFloat(meal.calories) || 0;
+            totals.protein += parseFloat(meal.protein) || 0;
+            totals.carbs += parseFloat(meal.carbs) || 0;
+            totals.fats += parseFloat(meal.fats) || 0;
+            return totals;
+        }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+    }
+
+    /**
+     * Rendeiza o resumo diário (Calorias e Treino), SEMPRE para a data ATUAL do appData.
+     */
+    function renderDailySummary() {
+        const { calories } = calculateDailyTotals();
+        const workoutBurn = calculateTotalWorkoutCalories();
+        const remaining = Math.max(0, appData.calorieGoal - calories);
+        const isWorkoutDone = getCurrentDayLog().isWorkoutDone;
+
+        document.getElementById('daily-date').textContent = formatDisplayDate(appData.currentDate);
+        
+        document.getElementById('summary-consumed').textContent = `${calories} kcal`;
+        
+        document.getElementById('summary-remaining').textContent = `${remaining} kcal`;
+        document.getElementById('summary-remaining').className = `font-bold text-xl ${remaining > 0 ? 'text-blue-500' : 'text-primary'}`;
+        
+        document.getElementById('summary-workout-status').textContent = isWorkoutDone ? '✅ Concluído' : '❌ Não Registrado';
+        document.getElementById('summary-workout-status').className = `font-bold text-lg ${isWorkoutDone ? 'text-primary' : 'text-red-500'}`;
+
+        document.getElementById('summary-workout-calories').textContent = `${workoutBurn} kcal`;
+    }
+
+    /**
+     * Renderiza o log de treinos para o dia atualmente selecionado.
+     */
+    function renderWorkouts() {
+        const date = document.getElementById('workout-date-select').value;
+        const log = appData.dailyLogs[date] || { workouts: [] };
+        const workoutsLogEl = document.getElementById('workouts-log');
+        workoutsLogEl.innerHTML = '';
+
+        if (log.workouts.length === 0) {
+            workoutsLogEl.innerHTML = '<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-xl">Nenhum treino registrado para esta data.</p>';
+            // Não alteramos o status isWorkoutDone aqui, pois isso deve ser feito apenas no dia atual
+        } else {
+            log.workouts.forEach((ex, index) => {
+                let estimatedBurn;
+                // Certifica-se que o cálculo só ocorre para o dia atual se o resumo for renderizado
+                if (ex.category === 'Cardio') {
+                    const match = ex.name.match(/\(([\d]+)\sKcal\)/);
+                    estimatedBurn = match ? parseInt(match[1]) : 250;
+                } else {
+                    // Usa a função de cálculo atualizada
+                    estimatedBurn = estimateStrengthWorkoutCalories(ex.sets, ex.reps, ex.load);
+                }
+                
+                const item = document.createElement('div');
+                item.className = 'p-4 bg-card-bg rounded-xl shadow-sm border-l-4 border-primary-light flex justify-between items-center';
+                item.innerHTML = `
+                    <div>
+                        <p class="font-bold text-text-default">${ex.name} <span class="text-xs font-normal text-purple-600">(${ex.category})</span></p>
+                        <p class="text-sm text-gray-600">Séries: ${ex.sets} | Reps: ${ex.reps} | Carga: ${ex.load} kg</p>
+                        <p class="text-xs text-purple-500 font-semibold mt-1">Estimativa de Queima: ${estimatedBurn} kcal</p>
+                    </div>
+                    <button data-index="${index}" data-type="workout" data-date="${date}" class="delete-item-btn text-red-400 hover:text-red-600 p-2 rounded-full transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                `;
+                workoutsLogEl.appendChild(item);
+            });
+        }
+        
+        // Se a data selecionada for a data atual, atualiza o resumo.
+        if (date === appData.currentDate) {
+            renderDailySummary();
+        }
+    }
+
+    /**
+     * Renderiza o log de refeições para o dia atualmente selecionado.
+     */
+    function renderFood() {
+        const date = document.getElementById('food-date-select').value;
+        const log = appData.dailyLogs[date] || { meals: [] };
+        const foodLogEl = document.getElementById('food-log');
+        foodLogEl.innerHTML = '';
+
+        if (log.meals.length === 0) {
+            foodLogEl.innerHTML = '<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-xl">Nenhuma refeição registrada para esta data.</p>';
+        } else {
+            // Agrupa as refeições por tipo (Café da Manhã, Almoço, etc.)
+            const groupedMeals = log.meals.reduce((acc, meal) => {
+                const type = meal.type || 'Lanche/Outros';
+                if (!acc[type]) {
+                    acc[type] = [];
+                }
+                acc[type].push(meal);
+                return acc;
+            }, {});
+
+            for (const type in groupedMeals) {
+                const typeHeader = document.createElement('h4');
+                typeHeader.className = 'text-base font-bold text-text-default mt-4 mb-2 border-b-2 border-primary-light';
+                typeHeader.textContent = type;
+                foodLogEl.appendChild(typeHeader);
+
+                groupedMeals[type].forEach((meal, index) => {
+                    const item = document.createElement('div');
+                    // O índice para exclusão deve ser o índice original no array log.meals
+                    const originalIndex = log.meals.findIndex(m => m === meal); 
+                    
+                    item.className = 'p-3 bg-card-bg rounded-lg shadow-sm border-l-4 border-blue-400 flex justify-between items-center';
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-semibold text-sm text-text-default">${meal.name}</p>
+                            <p class="text-base font-extrabold text-blue-600">${meal.calories} kcal</p>
+                            <p class="text-xs text-gray-500">P:${meal.protein}g | C:${meal.carbs}g | G:${meal.fats}g</p>
+                        </div>
+                        <button data-index="${originalIndex}" data-type="meal" data-date="${date}" class="delete-item-btn text-red-400 hover:text-red-600 p-2 rounded-full transition duration-150">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    `;
+                    foodLogEl.appendChild(item);
+                });
+            }
+        }
+
+        // Se a data selecionada for a data atual, atualiza o resumo.
+        if (date === appData.currentDate) {
+            renderDailySummary();
+        }
+    }
+    
+    /**
+     * Encontra o peso para uma determinada data.
+     * @param {string} date - Data no formato YYYY-MM-DD
+     * @returns {number|null} Peso ou null se não encontrado.
+     */
+    function getWeightForDate(date) {
+        const entry = appData.weightHistory.find(w => w.date === date);
+        return entry ? entry.weight : null;
+    }
+
+    /**
+     * --- GRÁFICOS E PROGRESSO ---
+     * Renderiza a exibição do peso para a data selecionada no input de peso.
+     * E aciona a renderização dos gráficos.
+     */
+    function renderProgress() {
+        const date = document.getElementById('weight-date-select').value;
+        const displayEl = document.getElementById('selected-weight-display');
+        const weight = getWeightForDate(date);
+
+        if (weight !== null) {
+            displayEl.innerHTML = `Peso Registrado em ${formatDisplayDate(date)}: <span class="text-weight-color">${weight} kg</span>`;
+        } else {
+            displayEl.textContent = `Nenhum peso registrado para ${formatDisplayDate(date)}.`;
+        }
+        
+        // Renderiza os gráficos toda vez que a aba Progresso é visitada ou a data é alterada.
+        renderWeightChart();
+        renderCalorieChart();
+    }
+    
+    /**
+     * Cria/Atualiza o gráfico de Peso.
+     */
+    function renderWeightChart() {
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        const sortedHistory = [...appData.weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        const labels = sortedHistory.map(w => new Date(w.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }));
+        const weights = sortedHistory.map(w => w.weight);
+        
+        // Cor do ponto para a data selecionada
+        const selectedDate = document.getElementById('weight-date-select').value;
+        const pointBackgroundColors = sortedHistory.map(w => w.date === selectedDate ? 'rgb(59, 130, 246)' : 'rgba(59, 130, 246, 0.5)');
+        const pointRadii = sortedHistory.map(w => w.date === selectedDate ? 8 : 5);
+
+
+        if (weightChartInstance) {
+            weightChartInstance.destroy();
+        }
+
+        weightChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Peso Corporal (kg)',
+                    data: weights,
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    pointBackgroundColor: pointBackgroundColors,
+                    pointRadius: pointRadii,
+                    pointHoverRadius: 10,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Peso (kg)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                }
+            },
+            // Plugin para exibir rótulos de dados (datalabels) - Customizado para o ponto selecionado
+            plugins: [{
+                id: 'customDatalabels',
+                afterDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const dataset = chart.data.datasets[0];
+                    const meta = chart.getDatasetMeta(0);
+                    
+                    if (!meta.hidden && dataset.data.length > 0) {
+                        meta.data.forEach((element, index) => {
+                            if (sortedHistory[index].date === selectedDate) {
+                                const value = dataset.data[index].toFixed(1) + ' kg';
+                                const x = element.x;
+                                const y = element.y;
+                                
+                                ctx.fillStyle = 'black';
+                                ctx.font = 'bold 12px Inter, sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'bottom';
+                                ctx.fillText(value, x, y - 10);
+                            }
+                        });
+                    }
+                }
+            }]
+        });
+    }
+
+    /**
+     * Cria/Atualiza o gráfico de Balanço Calórico.
+     */
+    function renderCalorieChart() {
+        const ctx = document.getElementById('calorieChart').getContext('2d');
+        const NUM_DAYS = 30;
+        const labels = [];
+        const calorieData = [];
+        const today = new Date();
+
+        // Popula as datas e calcula o balanço calórico para os últimos NUM_DAYS
+        for (let i = NUM_DAYS - 1; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const isoDate = date.toISOString().split('T')[0];
+            
+            const log = appData.dailyLogs[isoDate];
+            const consumed = log ? log.meals.reduce((sum, meal) => sum + meal.calories, 0) : 0;
+            const burned = log ? log.workouts.reduce((sum, ex) => {
+                if (ex.category === 'Cardio') {
+                    const match = ex.name.match(/\(([\d]+)\sKcal\)/);
+                    return sum + (match ? parseInt(match[1]) : 0);
+                } else {
+                    return sum + estimateStrengthWorkoutCalories(ex.sets, ex.reps, ex.load);
+                }
+            }, 0) : 0;
+            
+            // Balanço Líquido: Consumido - Meta + Queimado (para ver o excedente/déficit)
+            const balance = consumed - appData.calorieGoal + burned;
+
+            labels.push(date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }));
+            calorieData.push(balance);
+        }
+
+        if (calorieChartInstance) {
+            calorieChartInstance.destroy();
+        }
+
+        calorieChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Balanço Calórico (kcal)',
+                    data: calorieData,
+                    backgroundColor: calorieData.map(val => val > 0 ? '#EF4444' : '#10B981'), // Vermelho para excedente, Verde para déficit
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Balanço (Consumido - Meta + Queimado)'
+                        }
+                    },
+                    x: {
+                        // Oculta a maioria dos rótulos para melhor visualização em mobile
+                        ticks: {
+                            maxRotation: 0,
+                            minRotation: 0,
+                            callback: function(value, index, values) {
+                                // Mostra rótulos a cada 5 dias
+                                return index % 5 === 0 ? this.getLabelForValue(value) : '';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y > 0) {
+                                    label += `+${context.parsed.y} kcal (Excedente)`;
+                                } else if (context.parsed.y < 0) {
+                                    label += `${context.parsed.y} kcal (Déficit)`;
+                                } else {
+                                    label += '0 kcal (Na Meta)';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * Renderiza a tela de configurações.
+     */
+    function renderSettings() {
+        document.getElementById('current-goal-display').textContent = `Meta Atual: ${appData.calorieGoal} kcal`;
+
+        // Preenche a calculadora com os últimos valores salvos
+        document.getElementById('calc-gender').value = appData.calcInputs.gender || '';
+        document.getElementById('calc-age').value = appData.calcInputs.age || '';
+        document.getElementById('calc-height').value = appData.calcInputs.height || '';
+        document.getElementById('calc-weight').value = appData.calcInputs.weight || '';
+        document.getElementById('calc-activity').value = appData.calcInputs.activity || '';
+
+        // Oculta/limpa resultados anteriores da calculadora
+        document.getElementById('tdee-results').classList.add('hidden');
+        document.getElementById('result-bmr').textContent = 'BMR (Metabolismo Basal): -';
+        document.getElementById('result-tdee').textContent = 'TDEE: 0 kcal/dia';
+        document.getElementById('result-message').textContent = 'Calcule sua meta calórica.';
+    }
+
+    /**
+     * Injeta as opções de categorias e exercícios nos selects.
+     */
+    function setupExerciseForms() {
+        const categorySelect = document.getElementById('exercise-category');
+        const nameSelect = document.getElementById('exercise-name');
+
+        // Limpa e Injeta categorias
+        categorySelect.innerHTML = '<option value="">Selecione a Categoria</option>';
+        Object.keys(EXERCISE_DATABASE).forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categorySelect.appendChild(option);
+        });
+
+        // 2. Listener para atualizar a lista de exercícios
+        categorySelect.addEventListener('change', () => {
+            const selectedCategory = categorySelect.value;
+            
+            // Limpa o select de nomes
+            nameSelect.innerHTML = '<option value="">Selecione o Exercício</option>';
+            nameSelect.disabled = true;
+
+            if (selectedCategory && EXERCISE_DATABASE[selectedCategory]) {
+                EXERCISE_DATABASE[selectedCategory].forEach(exerciseName => {
+                    const option = document.createElement('option');
+                    option.value = exerciseName;
+                    option.textContent = exerciseName;
+                    nameSelect.appendChild(option);
+                });
+                nameSelect.disabled = false;
+            }
+        });
+    }
+
+    /**
+     * Injeta as opções de alimentos no datalist e configura a pré-visualização.
+     */
+    function setupFoodForms() {
+        const datalist = document.getElementById('food-list');
+        const foodNameInput = document.getElementById('food-name-input');
+        const quantityInput = document.getElementById('food-quantity');
+
+        // 1. Injeta alimentos no datalist
+        datalist.innerHTML = '';
+        Object.keys(FOOD_DATABASE).forEach(foodName => {
+            const option = document.createElement('option');
+            option.value = foodName;
+            datalist.appendChild(option);
+        });
+
+        /**
+         * Atualiza a pré-visualização de calorias e macros.
+         */
+        function updateFoodCalculation() {
+            const foodName = foodNameInput.value.trim();
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const foodInfo = FOOD_DATABASE[foodName];
+            
+            let kcal = 0;
+            let p = 0;
+            let c = 0;
+            let g = 0;
+
+            if (foodInfo && quantity > 0) {
+                const multiplier = quantity / foodInfo.portion;
+                kcal = Math.round(foodInfo.calories * multiplier);
+                p = (foodInfo.protein * multiplier).toFixed(1);
+                c = (foodInfo.carbs * multiplier).toFixed(1);
+                g = (foodInfo.fats * multiplier).toFixed(1);
+            }
+
+            document.getElementById('preview-calories').textContent = `${kcal} kcal`;
+            document.getElementById('preview-protein').textContent = p;
+            document.getElementById('preview-carbs').textContent = c;
+            document.getElementById('preview-fats').textContent = g;
+        }
+
+        // 2. Listeners para atualização em tempo real
+        foodNameInput.addEventListener('input', updateFoodCalculation);
+        quantityInput.addEventListener('input', updateFoodCalculation);
+
+        // Inicializa a pré-visualização
+        updateFoodCalculation();
+    }
+
+
+    // --- MANIPULADORES DE EVENTOS ---
+
+    /**
+     * Muda a aba ativa.
+     * @param {string} tabName - Nome da aba a ser ativada.
+     */
+    function changeTab(tabName) {
+        // Oculta todo o conteúdo das abas
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+
+        // Desativa todos os ícones
+        document.querySelectorAll('.nav-icon').forEach(icon => {
+            icon.classList.remove('active');
+        });
+
+        // Exibe o conteúdo da aba selecionada
+        const activeContent = document.getElementById(`tab-${tabName}`);
+        if (activeContent) {
+            activeContent.style.display = 'block';
+            
+            // Renderiza o conteúdo específico da aba
+            if (tabName === 'workouts') renderWorkouts();
+            if (tabName === 'food') renderFood();
+            if (tabName === 'progress') renderProgress(); 
+            if (tabName === 'settings') renderSettings();
+        }
+
+        document.querySelector(`.nav-icon[data-tab="${tabName}"]`).classList.add('active');
+        document.getElementById('daily-summary').style.display = (tabName === 'settings' ? 'none' : 'block');
+    }
+    
+    // --- INICIALIZAÇÃO E LISTENERS ---
+
+    // Listener para alteração da data na aba Alimentação.
+    document.getElementById('food-date-select').addEventListener('change', function() {
+        renderFood();
+    });
+    
+    // Listener para alteração da data na aba Treinos.
+    document.getElementById('workout-date-select').addEventListener('change', function() {
+        renderWorkouts();
+    });
+
+    // Listener para alteração da data na aba Progresso (Peso).
+    document.getElementById('content-area').addEventListener('change', function(e) {
+        if (e.target.id === 'weight-date-select') {
+            renderProgress();
+        }
+    });
+
+    /**
+     * Adiciona um novo exercício ao log.
+     */
+    document.getElementById('add-exercise-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        // O registro de treinos SEMPRE é feito na data ATUAL do sistema, 
+        // mas a renderização é baseada na data de visualização (workout-date-select)
+        const registrationDate = new Date().toISOString().split('T')[0];
+        const dayLog = getCurrentDayLog(registrationDate);
+        
+        const newExercise = {
+            category: document.getElementById('exercise-category').value,
+            name: document.getElementById('exercise-name').value,
+            sets: parseInt(document.getElementById('exercise-sets').value),
+            reps: parseInt(document.getElementById('exercise-reps').value),
+            load: parseFloat(document.getElementById('exercise-load').value),
+        };
+
+        dayLog.workouts.push(newExercise);
+        dayLog.isWorkoutDone = true;
+        saveData();
+        renderWorkouts(); // Renderiza o dia que está sendo visualizado
+        renderDailySummary(); // Garante que o resumo do dia atual (se for hoje) seja atualizado
+
+        this.reset();
+        // Garante que o select de nome volte ao estado inicial (disabled)
+        document.getElementById('exercise-name').disabled = true;
+    });
+
+    /**
+     * Adiciona uma nova refeição ao log, usando os valores calculados.
+     */
+    document.getElementById('add-meal-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        // O registro de refeições SEMPRE é feito na data ATUAL do sistema.
+        const registrationDate = new Date().toISOString().split('T')[0];
+        const dayLog = getCurrentDayLog(registrationDate);
+        
+        const foodName = document.getElementById('food-name-input').value.trim();
+        const foodInfo = FOOD_DATABASE[foodName];
+        const quantity = parseFloat(document.getElementById('food-quantity').value);
+
+        if (!foodInfo || quantity <= 0) {
+            console.error("Alimento inválido ou quantidade zero/negativa.");
+            return;
+        }
+
+        const multiplier = quantity / foodInfo.portion;
+        const newMeal = {
+            type: document.getElementById('meal-type').value,
+            name: `${foodName} (${quantity} ${foodInfo.unit}(s))`, // Nome agora inclui quantidade e unidade
+            calories: Math.round(foodInfo.calories * multiplier),
+            protein: parseFloat((foodInfo.protein * multiplier).toFixed(1)),
+            carbs: parseFloat((foodInfo.carbs * multiplier).toFixed(1)),
+            fats: parseFloat((foodInfo.fats * multiplier).toFixed(1)),
+        };
+
+        dayLog.meals.push(newMeal);
+        saveData();
+        
+        // Atualiza o log de alimentação e o resumo do dia atual (se for hoje)
+        renderFood();
+        if(document.getElementById('food-date-select').value === appData.currentDate) {
+            renderDailySummary();
+        }
+        
+        this.reset();
+        setupFoodForms(); // Reseta a pré-visualização para 0
+    });
+
+    /**
+     * Adiciona o peso corporal.
+     */
+    document.getElementById('add-weight-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const dateInput = document.getElementById('weight-date-select');
+        const weightInput = document.getElementById('current-weight');
+
+        const date = dateInput.value;
+        const newWeight = parseFloat(weightInput.value);
+
+        if (!date || isNaN(newWeight) || newWeight <= 0) {
+            console.error("Data ou peso inválidos.");
+            return;
+        }
+        
+        appData.weightHistory = appData.weightHistory.filter(w => w.date !== date);
+
+        appData.weightHistory.push({
+            date: date,
+            weight: newWeight
+        });
+
+        appData.weightHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        renderProgress(); // Renderiza o display e os gráficos
+        saveData();
+        weightInput.value = '';
+        
+        // Volta a data para hoje após o registro (boa prática para apps mobile)
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    });
+
+    /**
+     * Define a meta calórica manualmente.
+     */
+    document.getElementById('set-goal-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const goalInput = document.getElementById('calorie-goal-input');
+        const newGoal = parseInt(goalInput.value);
+
+        if (newGoal >= 1000) {
+            appData.calorieGoal = newGoal;
+            saveData();
+            renderSettings();
+            renderDailySummary();
+            goalInput.value = '';
+            document.getElementById('tdee-results').classList.remove('hidden');
+            document.getElementById('result-message').textContent = `Meta calórica definida manualmente para ${newGoal} kcal.`;
+            document.getElementById('result-bmr').textContent = 'BMR (Metabolismo Basal): -';
+            document.getElementById('result-tdee').textContent = `Meta: ${newGoal} kcal/dia`;
+        }
+    });
+
+    /**
+     * Calcula o TDEE e define a nova meta calórica.
+     */
+    document.getElementById('tdee-calculator-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const gender = document.getElementById('calc-gender').value;
+        const age = parseFloat(document.getElementById('calc-age').value);
+        const height = parseFloat(document.getElementById('calc-height').value);
+        const weight = parseFloat(document.getElementById('calc-weight').value);
+        const activityMultiplier = parseFloat(document.getElementById('calc-activity').value);
+
+        if (!gender || isNaN(age) || isNaN(height) || isNaN(weight) || isNaN(activityMultiplier)) {
+            document.getElementById('result-message').textContent = 'Por favor, preencha todos os campos válidos.';
+            document.getElementById('tdee-results').classList.remove('hidden');
+            return;
+        }
+
+        const bmr = calculateBMR(gender, weight, height, age);
+        const tdee = calculateTDEE(bmr, activityMultiplier);
+
+        // Atualiza a meta calórica
+        appData.calorieGoal = tdee;
+
+        // Salva os inputs no estado (opcional, para persistência do formulário)
+        appData.calcInputs = { gender, age, height, weight, activity: activityMultiplier };
+
+        saveData();
+        renderDailySummary();
+        
+        // Exibe os resultados
+        document.getElementById('result-bmr').textContent = `BMR (Metabolismo Basal): ${bmr} kcal`;
+        document.getElementById('result-tdee').textContent = `TDEE: ${tdee} kcal/dia`;
+        document.getElementById('result-message').textContent = `Meta calórica atualizada com sucesso para ${tdee} kcal.`;
+        document.getElementById('current-goal-display').textContent = `Meta Atual: ${tdee} kcal`;
+        document.getElementById('tdee-results').classList.remove('hidden');
+    });
+
+
+    /**
+     * Função de deleção (refeição ou exercício).
+     */
+    document.getElementById('content-area').addEventListener('click', function(e) {
+        if (e.target.closest('.delete-item-btn')) {
+            const button = e.target.closest('.delete-item-btn');
+            const index = parseInt(button.dataset.index);
+            const type = button.dataset.type;
+            const date = button.dataset.date || appData.currentDate;
+            
+            const log = appData.dailyLogs[date];
+
+            if (!log) return;
+
+            if (type === 'workout') {
+                log.workouts.splice(index, 1);
+                saveData();
+                renderWorkouts(); 
+            } else if (type === 'meal') {
+                log.meals.splice(index, 1);
+                saveData();
+                renderFood();
+            }
+            if (date === appData.currentDate) {
+                renderDailySummary(); 
+            }
+        }
+    });
+
+    // --- RESET DE DADOS (Modal Logic) ---
+    const resetModal = document.getElementById('reset-modal');
+    document.getElementById('reset-data-button').addEventListener('click', () => {
+        resetModal.classList.remove('hidden');
+    });
+
+    document.getElementById('cancel-reset').addEventListener('click', () => {
+        resetModal.classList.add('hidden');
+    });
+
+    document.getElementById('confirm-reset').addEventListener('click', () => {
+        localStorage.removeItem(STORAGE_KEY);
+        // Reseta o estado da aplicação
+        appData = {
+            calorieGoal: 2000,
+            currentDate: new Date().toISOString().split('T')[0],
+            dailyLogs: {},
+            weightHistory: [],
+            calcInputs: {} // Zera os inputs da calculadora também
+        };
+        saveData(); // Salva o estado resetado
+        resetModal.classList.add('hidden');
+        changeTab('workouts'); // Volta para a tela principal
+        renderSettings();
+        console.log("Todos os dados foram resetados.");
+    });
+
+
+    // --- INICIALIZAÇÃO ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Define a data atual nos inputs de data
+        const today = new Date().toISOString().split('T')[0];
+        
+        loadData();
+
+        // Configura os formulários (deve ser feito após o loadData)
+        setupExerciseForms();
+        setupFoodForms();
+
+        // Adiciona listeners para os botões de navegação
+        document.querySelectorAll('.nav-icon').forEach(button => {
+            button.addEventListener('click', () => {
+                const tab = button.getAttribute('data-tab');
+                changeTab(tab);
+            });
+        });
+
+        // Inicializa na aba de Treinos
+        changeTab('workouts');
+    });
+</script>
+
+<!-- REGISTRO DO SERVICE WORKER PWA (NOVO BLOCO) -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(error => {
+                    console.log('ServiceWorker registration failed: ', error);
+                });
+        });
+    }
+</script>
+
+</body>
+</html>

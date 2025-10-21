@@ -1,0 +1,21 @@
+{
+  "name": "Controle Financeiro",
+  "short_name": "Controle Financeiro",
+  "description": "Controle Financeiro",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5f5f4",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

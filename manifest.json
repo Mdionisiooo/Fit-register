@@ -1,7 +1,7 @@
 {
-  "name": "Controle Financeiro",
-  "short_name": "Controle Financeiro",
-  "description": "Controle Financeiro",
+  "name": "Fit Tracker",
+  "short_name": "Fit Tracker",
+  "description": "Fit Tracker",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f5f5f4",
@@ -18,4 +18,5 @@
       "sizes": "512x512"
     }
   ]
+
 }

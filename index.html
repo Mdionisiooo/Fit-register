@@ -77,6 +77,10 @@
         .tab-content {
             transition: opacity 0.3s ease-in-out;
         }
+        
+        .form-message-placeholder {
+            min-height: 1.5rem; /* Garante que a área de mensagem não colapse */
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -132,6 +136,11 @@
                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                         <option value="">Selecione o Exercício</option>
                     </select>
+
+                    <!-- NOVO: Exibição do Último PR/Registro -->
+                    <div id="last-pr-display" class="text-center">
+                        <span class="text-xs text-gray-400">Selecione o exercício para carregar o último registro.</span>
+                    </div>
                     
                     <div class="grid grid-cols-3 gap-2">
                         <input type="number" id="exercise-sets" placeholder="Séries" required min="1"
@@ -145,6 +154,8 @@
                             class="w-full bg-primary text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-opacity-90 transition duration-150">
                         + Registrar Treino
                     </button>
+                    <!-- Placeholder de Mensagem de Erro/Sucesso -->
+                    <p id="exercise-form-message" class="text-sm mt-2 text-center form-message-placeholder"></p>
                 </form>
             </div>
         </div>
@@ -159,8 +170,31 @@
                 <input type="date" id="food-date-select" class="p-2 border border-gray-300 rounded-lg text-sm flex-grow">
             </div>
 
+            <!-- Template Loader e Botão de Gerenciamento -->
+            <div class="p-4 bg-card-bg rounded-xl shadow-md mb-4 border-l-4 border-strength-color">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-semibold text-strength-color">Carregar Template</h3>
+                    <button id="open-template-manager" type="button" 
+                            class="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-lg font-medium hover:bg-gray-200 transition duration-150">
+                        Gerenciar Pratos
+                    </button>
+                </div>
+                
+                <form id="load-template-form" class="space-y-3">
+                    <select id="template-selector" required
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-strength-color">
+                        <option value="">Selecione um Prato Salvo</option>
+                        <!-- Templates serão injetados aqui -->
+                    </select>
+                    <button type="submit"
+                            class="w-full bg-strength-color text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-opacity-90 transition duration-150">
+                        Carregar na Refeição
+                    </button>
+                </form>
+            </div>
+            
             <div id="food-log" class="space-y-4 mb-6">
-                <!-- Refeições serão renderizadas aqui -->
+                <!-- Refeições e subtotais serão renderizados aqui -->
             </div>
 
             <!-- Formulário para Adicionar Refeição/Alimento -->
@@ -197,6 +231,8 @@
                             class="w-full bg-primary text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-opacity-90 transition duration-150">
                         + Adicionar Refeição
                     </button>
+                    <!-- Placeholder de Mensagem de Erro/Sucesso -->
+                    <p id="meal-form-message" class="text-sm mt-2 text-center form-message-placeholder"></p>
                 </form>
             </div>
             
@@ -227,7 +263,7 @@
                         + Salvar Alimento
                     </button>
                 </form>
-                <p id="custom-food-message" class="text-xs mt-2 text-center"></p>
+                <p id="custom-food-message" class="text-xs mt-2 text-center form-message-placeholder"></p>
             </div>
         </div>
 
@@ -401,6 +437,77 @@
         </div>
 
     </main>
+    
+    <!-- NOVO: MODAL GERENCIADOR DE PRATOS (Template Manager) -->
+    <div id="template-manager-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+        <div class="bg-card-bg p-4 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-3 text-strength-color border-b pb-2">Gerenciar Pratos Rápidos</h3>
+            
+            <form id="template-editor-form" class="space-y-4">
+                
+                <!-- 1. Seleção/Nome do Template -->
+                <div>
+                    <label for="template-name-input" class="text-sm font-medium text-gray-700">Nome do Prato:</label>
+                    <input type="text" id="template-name-input" placeholder="Novo Prato ou Prato para Editar" required
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-strength-color">
+                </div>
+                
+                <!-- 2. Adicionar Item ao Prato -->
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <h4 class="text-md font-semibold mb-2">Adicionar Item ao Prato</h4>
+                    <!-- REMOVIDO: required do input de busca para evitar validação ao salvar -->
+                    <input type="text" id="template-food-name" placeholder="Buscar Alimento" list="food-list-manager"
+                           class="w-full p-2 border border-gray-300 rounded-lg text-sm mb-2">
+                    <datalist id="food-list-manager">
+                        <!-- Itens do datalist de alimentos serão duplicados aqui pelo JS -->
+                    </datalist>
+                    
+                    <div class="flex gap-2">
+                        <input type="number" id="template-food-quantity" placeholder="Quantidade" required min="1" value="100"
+                               class="w-1/2 p-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="template-food-unit-display" placeholder="Unidade" disabled
+                               class="w-1/2 p-2 border border-gray-300 rounded-lg text-sm bg-gray-200">
+                    </div>
+                    <button id="add-item-to-template" type="button"
+                            class="w-full mt-3 bg-blue-500 text-white p-2 rounded-lg font-semibold hover:bg-blue-600 transition duration-150 text-sm">
+                        + Adicionar Item
+                    </button>
+                </div>
+                
+                <!-- 3. Composição Atual do Prato (Staging List) -->
+                <div>
+                    <h4 class="text-md font-semibold mb-2 flex justify-between">
+                        Composição Atual:
+                        <span id="template-total-items" class="text-sm text-gray-500 font-normal">0 itens</span>
+                    </h4>
+                    <!-- DELEGAÇÃO DE EVENTOS OCORRERÁ NESTE CONTAINER -->
+                    <div id="template-composition-list" class="space-y-2 max-h-40 overflow-y-auto border p-2 rounded-lg bg-white">
+                        <p class="text-gray-500 text-sm text-center">Nenhum item adicionado.</p>
+                    </div>
+                </div>
+
+                <!-- 4. Ações (Salvar/Deletar) -->
+                <div class="grid grid-cols-2 gap-3 pt-3 border-t">
+                    <button id="delete-template-btn" type="button"
+                            class="bg-red-500 text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-red-600 transition duration-150">
+                        Deletar Prato
+                    </button>
+                    <button type="submit"
+                            class="bg-primary text-white p-3 rounded-xl font-semibold shadow-lg hover:bg-primary-dark transition duration-150">
+                        Salvar Prato
+                    </button>
+                </div>
+                
+            </form>
+
+            <button id="close-template-manager" type="button"
+                    class="w-full mt-4 p-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-100 transition duration-150 text-sm">
+                Fechar
+            </button>
+            <p id="template-manager-message" class="text-sm mt-3 text-center"></p>
+        </div>
+    </div>
+
 
     <!-- Barra de Navegação Inferior (Fixo) -->
     <footer id="nav-bar" class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 max-w-md mx-auto shadow-2xl">
@@ -454,6 +561,20 @@
         dailyLogs: {}, 
         weightHistory: [], 
         prHistory: {}, // { 'Nome do Exercício': [{ date: 'YYYY-MM-DD', load: 100, reps: 5 }] }
+        // NOVOS TEMPLATES DE REFEIÇÃO (Hardcoded para demonstração)
+        mealTemplates: {
+            'Pós-Treino Padrão': [
+                { name: 'Frango, Peito, Cozido, Sem Pele', quantity: 150, unit: 'g' },
+                { name: 'Arroz, Tipo 1, Cozido', quantity: 150, unit: 'g' },
+                { name: 'Brócolis, Cozido', quantity: 100, unit: 'g' }
+            ],
+            'Shake Rápido': [
+                { name: 'Leite, Desnatado, UHT', quantity: 250, unit: 'mL' },
+                { name: 'Banana, Prata, Crua', quantity: 100, unit: 'g' }
+            ]
+        },
+        // Estado temporário para montagem de template no modal
+        templateEditorStaging: [],
         calcInputs: {}
     };
 
@@ -628,13 +749,71 @@
         ]
     };
 
-    // --- FUNÇÕES DE UTILIDADE ---
+    // --- FUNÇÕES DE PERSISTÊNCIA E INICIALIZAÇÃO ---
 
-    /**
-     * Mescla a base de dados fixa com a base de dados do usuário (salva no localStorage).
-     */
+    function loadData() {
+        // ... (Corpo da função loadData)
+        try {
+            const storedData = localStorage.getItem(STORAGE_KEY);
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                
+                // Mescla os dados salvos com a estrutura padrão para evitar erros
+                appData = { ...appData, ...parsedData };
+                
+                // Correção de migração: garante que prHistory e mealTemplates sejam objetos
+                if (typeof appData.prHistory === 'undefined' || appData.prHistory === null) {
+                    appData.prHistory = {};
+                }
+                // Garante que mealTemplates exista (se o usuário não o tiver excluído no reset manual, etc.)
+                if (typeof appData.mealTemplates === 'undefined' || appData.mealTemplates === null) {
+                    // Preserva os templates hardcoded se não houver nada salvo
+                    appData.mealTemplates = {
+                        'Pós-Treino Padrão': [
+                            { name: 'Frango, Peito, Cozido, Sem Pele', quantity: 150, unit: 'g' },
+                            { name: 'Arroz, Tipo 1, Cozido', quantity: 150, unit: 'g' },
+                            { name: 'Brócolis, Cozido', quantity: 100, unit: 'g' }
+                        ],
+                        'Shake Rápido': [
+                            { name: 'Leite, Desnatado, UHT', quantity: 250, unit: 'mL' },
+                            { name: 'Banana, Prata, Crua', quantity: 100, unit: 'g' }
+                        ]
+                    };
+                }
+                
+                // Garante que as novas metas de macro existam (para retrocompatibilidade)
+                if (typeof appData.proteinGoal === 'undefined') appData.proteinGoal = 150;
+                if (typeof appData.carbsGoal === 'undefined') appData.carbsGoal = 200;
+                if (typeof appData.fatsGoal === 'undefined') appData.fatsGoal = 60;
+            }
+            
+            // Inicializa a base de dados mesclada (fixa + usuário)
+            mergeFoodDatabases();
+
+            // Seta a data atual no seletor de data da aba Alimentação, Treinos e Peso
+            const today = new Date().toISOString().split('T')[0];
+            appData.currentDate = today;
+            
+            // Verifica a existência dos elementos antes de tentar atribuir
+            if (document.getElementById('food-date-select')) document.getElementById('food-date-select').value = today;
+            if (document.getElementById('workout-date-select')) document.getElementById('workout-date-select').value = today;
+            if (document.getElementById('weight-date-select')) document.getElementById('weight-date-select').value = today;
+        } catch (error) {
+            console.error("Erro ao carregar dados do LocalStorage:", error);
+        }
+    }
+
+    function saveData() {
+        // ... (Corpo da função saveData)
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        } catch (error) {
+            console.error("Erro ao salvar dados no LocalStorage:", error);
+        }
+    }
+
     function mergeFoodDatabases() {
-        // Carrega alimentos personalizados do localStorage
+        // ... (Corpo da função mergeFoodDatabases)
         let userFoods = {};
         try {
             const storedFoods = localStorage.getItem(USER_FOODS_KEY);
@@ -649,201 +828,116 @@
         FULL_FOOD_DATABASE = { ...BASE_FOOD_DATABASE, ...userFoods };
     }
     
-    /**
-     * Calcula o volume de peso (Load * Reps) como métrica base de força para comparação.
-     * @param {number} load - Carga em kg.
-     * @param {number} reps - Repetições.
-     * @returns {number} Volume de Trabalho.
-     */
+    // --- FUNÇÃO DE FEEDBACK (SUBSTITUINDO ALERT/CONFIRM) ---
+    function showMessage(elementId, message, colorClass) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.className = `text-sm mt-2 text-center ${colorClass}`;
+            el.textContent = message;
+            setTimeout(() => {
+                el.textContent = '';
+                el.className = `text-sm mt-2 text-center form-message-placeholder`;
+            }, 4000);
+        }
+    }
+
+    // --- FUNÇÕES DE CÁLCULO E RENDERIZAÇÃO ---
+
     function calculateVolume(load, reps) {
         return load * reps;
     }
+    
+    function getLastExerciseEntry(exerciseName) {
+        const dates = Object.keys(appData.dailyLogs).sort().reverse();
+        for (const date of dates) {
+            const log = appData.dailyLogs[date];
+            if (log && log.workouts) {
+                for (let i = log.workouts.length - 1; i >= 0; i--) {
+                    const ex = log.workouts[i];
+                    if (ex.name === exerciseName) {
+                        return ex;
+                    }
+                }
+            }
+        }
+        return null;
+    }
 
-    /**
-     * Verifica e atualiza o PR para o exercício e data atuais.
-     * @param {string} exerciseName - Nome do exercício.
-     * @param {string} date - Data do treino.
-     * @param {number} load - Carga utilizada.
-     * @param {number} reps - Repetições feitas.
-     */
     function updatePR(exerciseName, date, load, reps) {
-        if (load <= 0) return; // Ignora se a carga for zero
+        if (load <= 0) return;
 
         const currentVolume = calculateVolume(load, reps);
         
-        // Inicializa o array para o exercício se não existir
         if (!appData.prHistory[exerciseName]) {
             appData.prHistory[exerciseName] = [];
         }
 
         const history = appData.prHistory[exerciseName];
         
-        // Encontra o melhor PR registrado ATÉ HOJE
         const bestPR = history.reduce((best, entry) => {
             const entryVolume = calculateVolume(entry.load, entry.reps);
             if (entryVolume > calculateVolume(best.load, best.reps)) {
                 return entry;
             }
             return best;
-        }, { load: 0, reps: 0, volume: 0 }); // Inicia com volume zero
+        }, { load: 0, reps: 0, volume: 0 });
         
-        // 1. Verifica se é um novo PR histórico geral
         if (currentVolume > calculateVolume(bestPR.load, bestPR.reps)) {
-             // Se for um novo PR, adiciona um novo ponto na história
             history.push({
                 date: date,
                 load: load,
                 reps: reps,
                 volume: currentVolume
             });
-
-            // Substituindo alert por mensagem na tela (segurança e UX)
-            // alert(`PARABÉNS! Novo Recorde Pessoal (PR) em ${exerciseName}: ${load} kg x ${reps} reps!`);
             console.log(`PARABÉNS! Novo Recorde Pessoal (PR) em ${exerciseName}: ${load} kg x ${reps} reps!`);
-            
-            // Ordena o histórico por data
             history.sort((a, b) => new Date(a.date) - new Date(b.date));
-        } else {
-             // 2. Se não for um PR geral, apenas registra a tentativa do dia 
-             // (Isto é feito automaticamente no dailyLogs)
         }
     }
 
-
-    /**
-     * Formata a data ISO (YYYY-MM-DD) para um formato legível.
-     * @param {string} isoDate - Data no formato ISO.
-     * @returns {string} Data formatada (ex: Terça, 01/Jan)
-     */
     function formatDisplayDate(isoDate) {
-        const date = new Date(isoDate + 'T00:00:00'); // Adiciona T00:00:00 para evitar problemas de fuso horário
+        const date = new Date(isoDate + 'T00:00:00');
         const options = { weekday: 'short', day: '2-digit', month: 'short' };
         return date.toLocaleDateString('pt-BR', options).replace('.', '');
     }
 
-    /**
-     * Garante que o log diário para a data atual existe e inicializa workoutCalories.
-     */
     function getCurrentDayLog(date = appData.currentDate) {
         if (!appData.dailyLogs[date]) {
             appData.dailyLogs[date] = { workouts: [], meals: [], isWorkoutDone: false, workoutCalories: 0 };
         }
-        // Garante que o campo workoutCalories existe (para retrocompatibilidade)
         if (typeof appData.dailyLogs[date].workoutCalories === 'undefined') {
             appData.dailyLogs[date].workoutCalories = 0;
         }
         return appData.dailyLogs[date];
     }
 
-    // --- PERSISTÊNCIA (Local Storage) ---
-
-    /**
-     * Carrega os dados do LocalStorage e inicializa o estado.
-     */
-    function loadData() {
-        try {
-            const storedData = localStorage.getItem(STORAGE_KEY);
-            if (storedData) {
-                const parsedData = JSON.parse(storedData);
-                
-                // Mescla os dados salvos com a estrutura padrão para evitar erros
-                appData = { ...appData, ...parsedData };
-                
-                // Correção de migração: garante que prHistory é um objeto
-                if (typeof appData.prHistory === 'undefined' || appData.prHistory === null) {
-                    appData.prHistory = {};
-                }
-                // Garante que as novas metas de macro existam (para retrocompatibilidade)
-                if (typeof appData.proteinGoal === 'undefined') appData.proteinGoal = 150;
-                if (typeof appData.carbsGoal === 'undefined') appData.carbsGoal = 200;
-                if (typeof appData.fatsGoal === 'undefined') appData.fatsGoal = 60;
-            }
-            
-            // Inicializa a base de dados mesclada (fixa + usuário)
-            mergeFoodDatabases();
-
-            // Seta a data atual no seletor de data da aba Alimentação, Treinos e Peso
-            const today = new Date().toISOString().split('T')[0];
-            appData.currentDate = today;
-            document.getElementById('food-date-select').value = today;
-            document.getElementById('workout-date-select').value = today;
-            document.getElementById('weight-date-select').value = today; // Inicializa o seletor de data de peso
-        } catch (error) {
-            console.error("Erro ao carregar dados do LocalStorage:", error);
-        }
-    }
-
-    /**
-     * Salva o estado principal no LocalStorage.
-     */
-    function saveData() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-        } catch (error) {
-            console.error("Erro ao salvar dados no LocalStorage:", error);
-        }
-    }
-
-    // --- LÓGICA DE CÁLCULO DE ENERGIA ---
-    
-    /**
-     * Calcula o Metabolismo Basal (BMR) usando a fórmula de Mifflin-St Jeor.
-     * @param {string} gender - 'male' ou 'female'.
-     * @param {number} weight - Peso em kg.
-     * @param {number} height - Altura em cm.
-     * @param {number} age - Idade em anos.
-     * @returns {number} BMR em kcal.
-     */
     function calculateBMR(gender, weight, height, age) {
         if (gender === 'male') {
-            // BMR Homem = (10 * peso_kg) + (6.25 * altura_cm) - (5 * idade_anos) + 5
             return Math.round((10 * weight) + (6.25 * height) - (5 * age) + 5);
         } else if (gender === 'female') {
-            // BMR Mulher = (10 * peso_kg) + (6.25 * altura_cm) - (5 * idade_anos) - 161
             return Math.round((10 * weight) + (6.25 * height) - (5 * age) - 161);
         }
         return 0;
     }
 
-    /**
-     * Calcula o Gasto Calórico Total Diário (TDEE).
-     * @param {number} bmr - Metabolismo Basal em kcal.
-     * @param {number} activityMultiplier - Multiplicador de atividade.
-     * @returns {number} TDEE em kcal.
-     */
     function calculateTDEE(bmr, activityMultiplier) {
         return Math.round(bmr * activityMultiplier);
     }
 
-    /**
-     * Calcula a estimativa de calorias queimadas por um exercício de força.
-     * @param {number} sets - Número de séries.
-     * @param {number} reps - Número de repetições.
-     * @param {number} load - Carga em kg.
-     * @returns {number} Calorias estimadas (arredondado).
-     */
     function estimateStrengthWorkoutCalories(sets, reps, load) {
-        // Fator de estimativa ajustado para reduzir a inflação de calorias em treinos de força.
         const baseBurn = 15;
         const loadFactor = 0.02; 
         return Math.round(baseBurn + (sets * reps * load * loadFactor));
     }
 
-    /**
-     * Calcula a estimativa total de calorias queimadas no dia ATUAL.
-     * @returns {number} Total de calorias queimadas.
-     */
     function calculateTotalWorkoutCalories() {
         const dayLog = getCurrentDayLog();
         let totalCalories = 0;
 
         dayLog.workouts.forEach(ex => {
             if (ex.category === 'Cardio') {
-                // Para cardio, tenta extrair o valor da estimativa do nome
                 const match = ex.name.match(/\(([\d]+)\sKcal\)/);
                 totalCalories += match ? parseInt(match[1]) : 250; 
             } else {
-                // Força usa a estimativa baseada em sets, reps e load
                 totalCalories += estimateStrengthWorkoutCalories(ex.sets, ex.reps, ex.load);
             }
         });
@@ -852,10 +946,6 @@
         return totalCalories;
     }
 
-    /**
-     * Calcula o total de calorias e macros consumidos no dia ATUAL.
-     * @returns {{calories: number, protein: number, carbs: number, fats: number}}
-     */
     function calculateDailyTotals() {
         const dayLog = getCurrentDayLog();
         return dayLog.meals.reduce((totals, meal) => {
@@ -867,24 +957,19 @@
         }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
     }
 
-    /**
-     * Rendeiza o resumo diário (Calorias e Treino), SEMPRE para a data ATUAL do appData.
-     */
     function renderDailySummary() {
+        // ... (Corpo da função renderDailySummary)
         const { calories, protein, carbs, fats } = calculateDailyTotals();
         const workoutBurn = calculateTotalWorkoutCalories();
         const remainingCal = appData.calorieGoal - calories;
         const isWorkoutDone = getCurrentDayLog().isWorkoutDone;
         
-        // Novos cálculos de macro restante (Déficit é positivo, Excedente é negativo)
-        // Se o valor for negativo, significa que a meta foi EXCEDIDA (usaremos Math.min(0, ...) para exibir a diferença)
         const remainingProtein = appData.proteinGoal - protein;
         const remainingCarbs = appData.carbsGoal - carbs;
         const remainingFats = appData.fatsGoal - fats;
 
         document.getElementById('daily-date').textContent = formatDisplayDate(appData.currentDate);
         
-        // Injeta o conteúdo completo do resumo
         document.getElementById('summary-grid').innerHTML = `
             <!-- Linha 1: Calorias -->
             <div>
@@ -929,10 +1014,8 @@
         `;
     }
 
-    /**
-     * Renderiza o log de treinos para o dia atualmente selecionado.
-     */
     function renderWorkouts() {
+        // ... (Corpo da função renderWorkouts)
         const date = document.getElementById('workout-date-select').value;
         const log = appData.dailyLogs[date] || { workouts: [] };
         const workoutsLogEl = document.getElementById('workouts-log');
@@ -940,16 +1023,13 @@
 
         if (log.workouts.length === 0) {
             workoutsLogEl.innerHTML = '<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-xl">Nenhum treino registrado para esta data.</p>';
-            // Não alteramos o status isWorkoutDone aqui, pois isso deve ser feito apenas no dia atual
         } else {
             log.workouts.forEach((ex, index) => {
                 let estimatedBurn;
-                // Certifica-se que o cálculo só ocorre para o dia atual se o resumo for renderizado
                 if (ex.category === 'Cardio') {
                     const match = ex.name.match(/\(([\d]+)\sKcal\)/);
                     estimatedBurn = match ? parseInt(match[1]) : 250;
                 } else {
-                    // Usa a função de cálculo atualizada
                     estimatedBurn = estimateStrengthWorkoutCalories(ex.sets, ex.reps, ex.load);
                 }
                 
@@ -969,16 +1049,13 @@
             });
         }
         
-        // Se a data selecionada for a data atual, atualiza o resumo.
         if (date === appData.currentDate) {
             renderDailySummary();
         }
     }
 
-    /**
-     * Renderiza o log de refeições para o dia atualmente selecionado.
-     */
     function renderFood() {
+        // ... (Corpo da função renderFood)
         const date = document.getElementById('food-date-select').value;
         const log = appData.dailyLogs[date] || { meals: [] };
         const foodLogEl = document.getElementById('food-log');
@@ -987,7 +1064,6 @@
         if (log.meals.length === 0) {
             foodLogEl.innerHTML = '<p class="text-center text-gray-500 p-4 bg-gray-100 rounded-xl">Nenhuma refeição registrada para esta data.</p>';
         } else {
-            // Agrupa as refeições por tipo (Café da Manhã, Almoço, etc.)
             const groupedMeals = log.meals.reduce((acc, meal) => {
                 const type = meal.type || 'Lanche/Outros';
                 if (!acc[type]) {
@@ -998,14 +1074,38 @@
             }, {});
 
             for (const type in groupedMeals) {
+                const mealsOfType = groupedMeals[type];
+                
+                const mealTotals = mealsOfType.reduce((acc, meal) => {
+                    acc.calories += meal.calories;
+                    acc.protein += meal.protein;
+                    acc.carbs += meal.carbs;
+                    acc.fats += meal.fats;
+                    return acc;
+                }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
                 const typeHeader = document.createElement('h4');
-                typeHeader.className = 'text-base font-bold text-text-default mt-4 mb-2 border-b-2 border-primary-light';
-                typeHeader.textContent = type;
+                typeHeader.className = 'text-base font-bold text-text-default mt-4 mb-2 border-b-2 border-primary-light flex justify-between items-center';
+                typeHeader.innerHTML = `
+                    <span>${type}</span>
+                    <span class="text-xs text-gray-500 font-normal">${mealsOfType.length} itens</span>
+                `;
                 foodLogEl.appendChild(typeHeader);
 
-                groupedMeals[type].forEach((meal, index) => {
+                const subtotalEl = document.createElement('div');
+                subtotalEl.className = 'p-3 bg-primary-light rounded-lg shadow-sm mb-2 text-sm';
+                subtotalEl.innerHTML = `
+                    <p class="font-bold text-lg text-primary">${mealTotals.calories} kcal</p>
+                    <p class="text-xs text-gray-700">
+                        P: ${mealTotals.protein.toFixed(1)}g | 
+                        C: ${mealTotals.carbs.toFixed(1)}g | 
+                        G: ${mealTotals.fats.toFixed(1)}g
+                    </p>
+                `;
+                foodLogEl.appendChild(subtotalEl);
+                
+                mealsOfType.forEach((meal) => {
                     const item = document.createElement('div');
-                    // O índice para exclusão deve ser o índice original no array log.meals
                     const originalIndex = log.meals.findIndex(m => m === meal); 
                     
                     item.className = 'p-3 bg-card-bg rounded-lg shadow-sm border-l-4 border-blue-400 flex justify-between items-center';
@@ -1024,28 +1124,18 @@
             }
         }
 
-        // Se a data selecionada for a data atual, atualiza o resumo.
         if (date === appData.currentDate) {
             renderDailySummary();
         }
     }
-    
-    /**
-     * Encontra o peso para uma determinada data.
-     * @param {string} date - Data no formato YYYY-MM-DD
-     * @returns {number|null} Peso ou null se não encontrado.
-     */
+
     function getWeightForDate(date) {
         const entry = appData.weightHistory.find(w => w.date === date);
         return entry ? entry.weight : null;
     }
 
-    /**
-     * --- GRÁFICOS E PROGRESSO ---
-     * Renderiza a exibição do peso para a data selecionada no input de peso.
-     * E aciona a renderização dos gráficos.
-     */
     function renderProgress() {
+        // ... (Corpo da função renderProgress)
         const date = document.getElementById('weight-date-select').value;
         const displayEl = document.getElementById('selected-weight-display');
         const weight = getWeightForDate(date);
@@ -1056,23 +1146,17 @@
             displayEl.textContent = `Nenhum peso registrado para ${formatDisplayDate(date)}.`;
         }
         
-        // Renderiza os gráficos toda vez que a aba Progresso é visitada ou a data é alterada.
         renderWeightChart();
         renderCalorieChart();
-        // Renderiza o gráfico de força ao carregar a aba
         const selectedExercise = document.getElementById('strength-exercise-select').value;
         renderStrengthChart(selectedExercise);
     }
 
-    /**
-     * Cria/Atualiza o gráfico de Evolução de Força (PRs).
-     * @param {string} exerciseName - Nome do exercício selecionado.
-     */
     function renderStrengthChart(exerciseName) {
+        // ... (Corpo da função renderStrengthChart)
         const ctx = document.getElementById('strengthChart').getContext('2d');
         const displayEl = document.getElementById('current-pr-display');
 
-        // Destrói a instância anterior, se existir
         if (strengthChartInstance) {
             strengthChartInstance.destroy();
         }
@@ -1084,7 +1168,6 @@
         
         const history = appData.prHistory[exerciseName];
         
-        // Determina o PR atual (último ponto, pois está ordenado por data)
         const currentPR = history[history.length - 1];
         displayEl.innerHTML = `PR Atual: <span class="text-strength-color">${currentPR.load} kg</span> x ${currentPR.reps} reps (Volume: ${currentPR.volume.toFixed(0)})`;
 
@@ -1128,7 +1211,6 @@
                         mode: 'index',
                         intersect: false,
                         callbacks: {
-                            // Customiza o tooltip para mostrar repetições e volume
                             label: function(context) {
                                 const index = context.dataIndex;
                                 const prEntry = history[index];
@@ -1144,17 +1226,14 @@
         });
     }
 
-    /**
-     * Cria/Atualiza o gráfico de Peso.
-     */
     function renderWeightChart() {
+        // ... (Corpo da função renderWeightChart)
         const ctx = document.getElementById('weightChart').getContext('2d');
         const sortedHistory = [...appData.weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
         
         const labels = sortedHistory.map(w => new Date(w.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }));
         const weights = sortedHistory.map(w => w.weight);
         
-        // Cor do ponto para a data selecionada
         const selectedDate = document.getElementById('weight-date-select').value;
         const pointBackgroundColors = sortedHistory.map(w => w.date === selectedDate ? 'rgb(59, 130, 246)' : 'rgba(59, 130, 246, 0.5)');
         const pointRadii = sortedHistory.map(w => w.date === selectedDate ? 8 : 5);
@@ -1202,7 +1281,6 @@
                     },
                 }
             },
-            // Plugin para exibir rótulos de dados (datalabels) - Customizado para o ponto selecionado
             plugins: [{
                 id: 'customDatalabels',
                 afterDraw: function(chart) {
@@ -1230,17 +1308,14 @@
         });
     }
 
-    /**
-     * Cria/Atualiza o gráfico de Balanço Calórico.
-     */
     function renderCalorieChart() {
+        // ... (Corpo da função renderCalorieChart)
         const ctx = document.getElementById('calorieChart').getContext('2d');
         const NUM_DAYS = 30;
         const labels = [];
         const calorieData = [];
         const today = new Date();
 
-        // Popula as datas e calcula o balanço calórico para os últimos NUM_DAYS
         for (let i = NUM_DAYS - 1; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
@@ -1257,7 +1332,6 @@
                 }
             }, 0) : 0;
             
-            // Balanço Líquido: Consumido - Meta + Queimado (para ver o excedente/déficit)
             const balance = consumed - appData.calorieGoal + burned;
 
             labels.push(date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }));
@@ -1290,12 +1364,10 @@
                         }
                     },
                     x: {
-                        // Oculta a maioria dos rótulos para melhor visualização em mobile
                         ticks: {
                             maxRotation: 0,
                             minRotation: 0,
                             callback: function(value, index, values) {
-                                // Mostra rótulos a cada 5 dias
                                 return index % 5 === 0 ? this.getLabelForValue(value) : '';
                             }
                         }
@@ -1327,14 +1399,11 @@
             }
         });
     }
-    
-    /**
-     * Renderiza a tela de configurações.
-     */
+
     function renderSettings() {
+        // ... (Corpo da função renderSettings)
         document.getElementById('current-goal-display').textContent = `Meta Atual: ${appData.calorieGoal} kcal`;
 
-        // NOVO: Exibir macros atuais e preencher formulário
         document.getElementById('macro-goal-message').innerHTML = 
             `<span class="font-bold text-blue-500">P: ${appData.proteinGoal}g | C: ${appData.carbsGoal}g | G: ${appData.fatsGoal}g</span>`;
         
@@ -1343,33 +1412,28 @@
         document.getElementById('fats-goal-input').value = appData.fatsGoal;
 
 
-        // Preenche a calculadora com os últimos valores salvos
         document.getElementById('calc-gender').value = appData.calcInputs.gender || '';
         document.getElementById('calc-age').value = appData.calcInputs.age || '';
         document.getElementById('calc-height').value = appData.calcInputs.height || '';
         document.getElementById('calc-weight').value = appData.calcInputs.weight || '';
         document.getElementById('calc-activity').value = appData.calcInputs.activity || '';
 
-        // Oculta/limpa resultados anteriores da calculadora
         document.getElementById('tdee-results').classList.add('hidden');
         document.getElementById('result-bmr').textContent = 'BMR (Metabolismo Basal): -';
         document.getElementById('result-tdee').textContent = 'TDEE: 0 kcal/dia';
         document.getElementById('result-message').textContent = 'Calcule sua meta calórica.';
     }
 
-    /**
-     * Injeta as opções de categorias e exercícios nos selects.
-     */
     function setupExerciseForms() {
+        // ... (Corpo da função setupExerciseForms)
         const categorySelect = document.getElementById('exercise-category');
         const nameSelect = document.getElementById('exercise-name');
         const strengthSelect = document.getElementById('strength-exercise-select');
+        const lastPrDisplay = document.getElementById('last-pr-display');
 
-        // Limpa e Injeta categorias
         categorySelect.innerHTML = '<option value="">Selecione a Categoria</option>';
         strengthSelect.innerHTML = '<option value="">Selecione um Exercício...</option>';
 
-        // Coleta todos os exercícios que NÃO SÃO CARDIO
         let strengthExercises = [];
         
         Object.keys(EXERCISE_DATABASE).forEach(category => {
@@ -1383,7 +1447,6 @@
             }
         });
         
-        // 3. Injeta exercícios de Força no seletor da aba Progresso
         strengthExercises.sort().forEach(exerciseName => {
             const option = document.createElement('option');
             option.value = exerciseName;
@@ -1391,18 +1454,17 @@
             strengthSelect.appendChild(option);
         });
         
-        // Listener para o seletor de força no Progresso
         strengthSelect.addEventListener('change', function() {
             renderStrengthChart(this.value);
         });
 
-        // 2. Listener para atualizar a lista de exercícios no Formulário de Registro
         categorySelect.addEventListener('change', () => {
             const selectedCategory = categorySelect.value;
             
-            // Limpa o select de nomes
             nameSelect.innerHTML = '<option value="">Selecione o Exercício</option>';
             nameSelect.disabled = true;
+            document.getElementById('exercise-load').value = 0; // Reset load on category change
+            lastPrDisplay.innerHTML = `<span class="text-xs text-gray-400">Selecione o exercício para carregar o último registro.</span>`;
 
             if (selectedCategory && EXERCISE_DATABASE[selectedCategory]) {
                 EXERCISE_DATABASE[selectedCategory].forEach(exerciseName => {
@@ -1414,31 +1476,85 @@
                 nameSelect.disabled = false;
             }
         });
+        
+        nameSelect.addEventListener('change', () => {
+            const exerciseName = nameSelect.value;
+            const lastEntry = getLastExerciseEntry(exerciseName);
+
+            const setsInput = document.getElementById('exercise-sets');
+            const repsInput = document.getElementById('exercise-reps');
+            const loadInput = document.getElementById('exercise-load');
+
+            if (lastEntry) {
+                setsInput.value = lastEntry.sets;
+                repsInput.value = lastEntry.reps;
+                loadInput.value = lastEntry.load;
+                lastPrDisplay.innerHTML = `<span class="text-xs text-blue-500">Último Reg: ${lastEntry.load}kg x ${lastEntry.reps} (${lastEntry.sets} sets)</span>`;
+            } else {
+                setsInput.value = 4;
+                repsInput.value = 10;
+                loadInput.value = 0;
+                lastPrDisplay.innerHTML = `<span class="text-xs text-gray-400">Nenhum registro anterior.</span>`;
+            }
+        });
+    }
+    
+    function setupMealTemplateForms() {
+        // ... (Corpo da função setupMealTemplateForms)
+        const templateSelector = document.getElementById('template-selector');
+        templateSelector.innerHTML = '<option value="">Selecione um Prato Salvo</option>';
+        
+        Object.keys(appData.mealTemplates).sort().forEach(templateName => {
+            const option = document.createElement('option');
+            option.value = templateName;
+            option.textContent = templateName;
+            templateSelector.appendChild(option);
+        });
+
+        const datalistManager = document.getElementById('food-list-manager');
+        const datalistOriginal = document.getElementById('food-list');
+        if (datalistManager && datalistOriginal) {
+            datalistManager.innerHTML = datalistOriginal.innerHTML;
+        } else {
+            console.error("Erro: Elementos datalist não encontrados no DOM.");
+        }
+        
+        const templateFoodInput = document.getElementById('template-food-name');
+        if(templateFoodInput) {
+            templateFoodInput.addEventListener('input', () => {
+                const foodName = templateFoodInput.value.trim();
+                const foodInfo = FULL_FOOD_DATABASE[foodName];
+                const unitDisplay = document.getElementById('template-food-unit-display');
+                if (unitDisplay) {
+                    if (foodInfo) {
+                        unitDisplay.value = foodInfo.unit || 'g';
+                    } else {
+                        unitDisplay.value = 'Unidade';
+                    }
+                }
+            });
+        }
     }
 
-    /**
-     * Injeta as opções de alimentos no datalist e configura a pré-visualização.
-     */
+
     function setupFoodForms() {
+        // ... (Corpo da função setupFoodForms)
         const datalist = document.getElementById('food-list');
         const foodNameInput = document.getElementById('food-name-input');
         const quantityInput = document.getElementById('food-quantity');
 
-        // 1. Injeta alimentos no datalist (usando a base de dados mesclada)
-        datalist.innerHTML = '';
-        Object.keys(FULL_FOOD_DATABASE).sort().forEach(foodName => {
-            const option = document.createElement('option');
-            option.value = foodName;
-            datalist.appendChild(option);
-        });
+        if (datalist) {
+            datalist.innerHTML = '';
+            Object.keys(FULL_FOOD_DATABASE).sort().forEach(foodName => {
+                const option = document.createElement('option');
+                option.value = foodName;
+                datalist.appendChild(option);
+            });
+        }
 
-        /**
-         * Atualiza a pré-visualização de calorias e macros.
-         */
         function updateFoodCalculation() {
             const foodName = foodNameInput.value.trim();
             const quantity = parseFloat(quantityInput.value) || 0;
-            // Busca na FULL_FOOD_DATABASE
             const foodInfo = FULL_FOOD_DATABASE[foodName];
             
             let kcal = 0;
@@ -1447,7 +1563,6 @@
             let g = 0;
 
             if (foodInfo && quantity > 0) {
-                // A porção padrão é 100g, exceto para óleo, manteiga e açúcar (10g/mL) e ovo (50g/unidade)
                 const portionBase = foodInfo.portion || 100; 
                 
                 const multiplier = quantity / portionBase;
@@ -1463,38 +1578,27 @@
             document.getElementById('preview-fats').textContent = g;
         }
 
-        // 2. Listeners para atualização em tempo real
-        foodNameInput.addEventListener('input', updateFoodCalculation);
-        quantityInput.addEventListener('input', updateFoodCalculation);
-
-        // Inicializa a pré-visualização
-        updateFoodCalculation();
+        if (foodNameInput && quantityInput) {
+            foodNameInput.addEventListener('input', updateFoodCalculation);
+            quantityInput.addEventListener('input', updateFoodCalculation);
+            updateFoodCalculation();
+        }
     }
 
-
-    // --- MANIPULADORES DE EVENTOS ---
-
-    /**
-     * Muda a aba ativa.
-     * @param {string} tabName - Nome da aba a ser ativada.
-     */
     function changeTab(tabName) {
-        // Oculta todo o conteúdo das abas
+        // ... (Corpo da função changeTab)
         document.querySelectorAll('.tab-content').forEach(content => {
             content.style.display = 'none';
         });
 
-        // Desativa todos os ícones
         document.querySelectorAll('.nav-icon').forEach(icon => {
             icon.classList.remove('active');
         });
 
-        // Exibe o conteúdo da aba selecionada
         const activeContent = document.getElementById(`tab-${tabName}`);
         if (activeContent) {
             activeContent.style.display = 'block';
             
-            // Renderiza o conteúdo específico da aba
             if (tabName === 'workouts') renderWorkouts();
             if (tabName === 'food') renderFood();
             if (tabName === 'progress') renderProgress(); 
@@ -1505,10 +1609,260 @@
         document.getElementById('daily-summary').style.display = (tabName === 'settings' ? 'none' : 'block');
     }
     
-    /**
-     * Adiciona o alimento personalizado ao banco de dados e atualiza a lista.
-     */
+    function renderTemplateComposition() {
+        // ... (Corpo da função renderTemplateComposition)
+        const compositionList = document.getElementById('template-composition-list');
+        const totalItemsEl = document.getElementById('template-total-items');
+        compositionList.innerHTML = '';
+        
+        if (appData.templateEditorStaging.length === 0) {
+            compositionList.innerHTML = '<p class="text-gray-500 text-sm text-center p-2">Nenhum item adicionado.</p>';
+        } else {
+            appData.templateEditorStaging.forEach((item, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex justify-between items-center bg-gray-50 p-2 rounded-lg text-sm border-b';
+                itemEl.innerHTML = `
+                    <p class="font-medium text-text-default">${item.name}</p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-600">${item.quantity} ${item.unit}</span>
+                        <button type="button" data-index="${index}" class="remove-template-item text-red-500 hover:text-red-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                `;
+                compositionList.appendChild(itemEl);
+            });
+        }
+        totalItemsEl.textContent = `${appData.templateEditorStaging.length} itens`;
+    }
+
+    function openTemplateManager(templateName = null) {
+        // ... (Corpo da função openTemplateManager)
+        const modal = document.getElementById('template-manager-modal');
+        const nameInput = document.getElementById('template-name-input');
+        const deleteBtn = document.getElementById('delete-template-btn');
+        
+        appData.templateEditorStaging = [];
+        nameInput.value = '';
+        nameInput.dataset.originalName = '';
+        
+        if (templateName && appData.mealTemplates.hasOwnProperty(templateName)) {
+            nameInput.value = templateName;
+            nameInput.dataset.originalName = templateName;
+            appData.templateEditorStaging = [...appData.mealTemplates[templateName]];
+            deleteBtn.classList.remove('hidden');
+        } else {
+            deleteBtn.classList.add('hidden');
+        }
+
+        renderTemplateComposition();
+        document.getElementById('template-manager-message').textContent = '';
+        modal.classList.remove('hidden');
+    }
+
+    // --- MANIPULADORES DE EVENTOS DE FORMULÁRIO (REFINADOS) ---
+    
+    // Listener do Formulário de Exercícios (com validação estrita)
+    document.getElementById('add-exercise-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const date = document.getElementById('workout-date-select').value;
+        const category = document.getElementById('exercise-category').value;
+        const name = document.getElementById('exercise-name').value;
+        const sets = parseInt(document.getElementById('exercise-sets').value);
+        const reps = parseInt(document.getElementById('exercise-reps').value);
+        const load = parseFloat(document.getElementById('exercise-load').value);
+        
+        // Validação estrita
+        if (!category || !name) {
+            showMessage('exercise-form-message', 'Erro: Selecione a categoria e o exercício.', 'text-red-500');
+            return;
+        }
+        if (isNaN(sets) || sets <= 0 || isNaN(reps) || reps <= 0 || isNaN(load) || load < 0) {
+            showMessage('exercise-form-message', 'Erro: Séries, Reps e Carga devem ser números válidos (≥ 0).', 'text-red-500');
+            return;
+        }
+
+        const dayLog = getCurrentDayLog(date);
+        
+        // Adicionar novo exercício
+        const newExercise = { category, name, sets, reps, load };
+        dayLog.workouts.push(newExercise);
+        dayLog.isWorkoutDone = true;
+
+        // Atualizar PR (apenas para exercícios de força)
+        if (category !== 'Cardio') {
+            updatePR(name, date, load, reps);
+        }
+
+        saveData();
+        renderWorkouts();
+        
+        // Limpar formulário (mantendo a categoria) e mostrar sucesso
+        document.getElementById('exercise-name').value = '';
+        document.getElementById('exercise-sets').value = 4;
+        document.getElementById('exercise-reps').value = 10;
+        document.getElementById('exercise-load').value = 0;
+        
+        showMessage('exercise-form-message', 'Exercício registrado com sucesso!', 'text-primary');
+    });
+
+    // NOVO Listener do Formulário para Adicionar Refeição/Alimento
+    document.getElementById('add-meal-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const date = document.getElementById('food-date-select').value;
+        const mealType = document.getElementById('meal-type').value;
+        const foodName = document.getElementById('food-name-input').value.trim();
+        const quantity = parseFloat(document.getElementById('food-quantity').value);
+        const messageEl = document.getElementById('meal-form-message');
+
+        // Validação
+        if (!mealType) {
+            showMessage('meal-form-message', 'Erro: Selecione o tipo de refeição.', 'text-red-500');
+            return;
+        }
+        const foodInfo = FULL_FOOD_DATABASE[foodName];
+        if (!foodInfo) {
+            showMessage('meal-form-message', 'Erro: Alimento não encontrado na lista.', 'text-red-500');
+            return;
+        }
+        if (isNaN(quantity) || quantity <= 0) {
+            showMessage('meal-form-message', 'Erro: Quantidade inválida.', 'text-red-500');
+            return;
+        }
+
+        // Cálculo e Registro
+        const multiplier = quantity / (foodInfo.portion || 100);
+        const newMeal = {
+            type: mealType,
+            name: foodName,
+            quantity: quantity,
+            unit: foodInfo.unit || 'g',
+            calories: Math.round(foodInfo.calories * multiplier),
+            protein: parseFloat((foodInfo.protein * multiplier).toFixed(1)),
+            carbs: parseFloat((foodInfo.carbs * multiplier).toFixed(1)),
+            fats: parseFloat((foodInfo.fats * multiplier).toFixed(1))
+        };
+
+        const dayLog = getCurrentDayLog(date);
+        dayLog.meals.push(newMeal);
+
+        saveData();
+        renderFood();
+        
+        // Limpar formulário (mantendo o tipo de refeição)
+        document.getElementById('food-name-input').value = '';
+        document.getElementById('food-quantity').value = 100;
+        
+        showMessage('meal-form-message', `${newMeal.name} registrado em ${mealType}.`, 'text-primary');
+    });
+
+    // NOVO Listener do Formulário para Carregar Template
+    document.getElementById('load-template-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const date = document.getElementById('food-date-select').value;
+        const templateName = document.getElementById('template-selector').value;
+        
+        if (!templateName) {
+            showMessage('meal-form-message', 'Erro: Selecione um prato template para carregar.', 'text-red-500');
+            return;
+        }
+
+        const template = appData.mealTemplates[templateName];
+
+        if (!template || template.length === 0) {
+            showMessage('meal-form-message', `Erro: Template "${templateName}" está vazio ou não existe.`, 'text-red-500');
+            return;
+        }
+
+        const dayLog = getCurrentDayLog(date);
+        
+        const defaultMealType = 'Lanche/Outros'; 
+        let loadedCount = 0;
+
+        template.forEach(item => {
+            const foodInfo = FULL_FOOD_DATABASE[item.name];
+
+            if (foodInfo && item.quantity > 0) {
+                const multiplier = item.quantity / (foodInfo.portion || 100);
+                
+                const newMeal = {
+                    type: defaultMealType, // Define um tipo padrão
+                    name: item.name,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    calories: Math.round(foodInfo.calories * multiplier),
+                    protein: parseFloat((foodInfo.protein * multiplier).toFixed(1)),
+                    carbs: parseFloat((foodInfo.carbs * multiplier).toFixed(1)),
+                    fats: parseFloat((foodInfo.fats * multiplier).toFixed(1))
+                };
+                dayLog.meals.push(newMeal);
+                loadedCount++;
+            }
+        });
+
+        saveData();
+        renderFood();
+        
+        document.getElementById('template-selector').value = '';
+
+        if (loadedCount > 0) {
+            showMessage('meal-form-message', `Template "${templateName}" carregado! (${loadedCount} itens)`, 'text-primary');
+        } else {
+            showMessage('meal-form-message', `Aviso: Template carregado, mas nenhum item válido adicionado.`, 'text-red-500');
+        }
+    });
+
+
+    // Listener do botão de "Gerenciar Pratos"
+    if (document.getElementById('open-template-manager')) {
+        document.getElementById('open-template-manager').addEventListener('click', () => {
+            const templateSelector = document.getElementById('template-selector');
+            const selectedTemplate = templateSelector.value;
+            // Carrega o prato selecionado no dropdown, ou abre um novo
+            openTemplateManager(selectedTemplate || null); 
+        });
+    }
+
+    // Listener do botão de "Fechar" no modal
+    if (document.getElementById('close-template-manager')) {
+        document.getElementById('close-template-manager').addEventListener('click', () => {
+            document.getElementById('template-manager-modal').classList.add('hidden');
+            // Re-renderiza o log de comida para garantir que o dropdown está atualizado
+            renderFood();
+        });
+    }
+
+    // Ações de Carregamento para Edição: Quando o usuário digita o nome
+    if (document.getElementById('template-name-input')) {
+        document.getElementById('template-name-input').addEventListener('input', function() {
+            const name = this.value.trim();
+            const deleteBtn = document.getElementById('delete-template-btn');
+            
+            // Verifica se o nome digitado corresponde a um template existente
+            const isCurrentlyEditing = appData.mealTemplates.hasOwnProperty(name);
+
+            if (isCurrentlyEditing) {
+                // Carrega os itens do template existente para o staging area
+                appData.templateEditorStaging = [...appData.mealTemplates[name]];
+                renderTemplateComposition();
+                deleteBtn.classList.remove('hidden');
+            } else if (name.length === 0) {
+                 // Campo vazio, limpa tudo no modal
+                 appData.templateEditorStaging = [];
+                 renderTemplateComposition();
+                 deleteBtn.classList.add('hidden');
+            } else {
+                deleteBtn.classList.add('hidden');
+            }
+        });
+    }
+    
+    // Listener para o novo alimento personalizado (Mantido)
     document.getElementById('add-custom-food-form').addEventListener('submit', function(e) {
+        // ... (código existente)
         e.preventDefault();
         
         const nameInput = document.getElementById('custom-food-name');
@@ -1517,9 +1871,6 @@
         const carbsInput = document.getElementById('custom-food-carbs');
         const fatsInput = document.getElementById('custom-food-fats');
         const unitInput = document.getElementById('custom-food-unit');
-        const messageEl = document.getElementById('custom-food-message');
-
-        messageEl.textContent = ''; // Limpa mensagens anteriores
 
         const newFoodName = nameInput.value.trim();
         const newCalories = parseInt(caloriesInput.value);
@@ -1527,17 +1878,16 @@
         const newCarbs = parseFloat(carbsInput.value);
         const newFats = parseFloat(fatsInput.value);
         
-        // Validação
         if (!newFoodName) {
-            messageEl.innerHTML = '<span class="text-red-500">Erro: O nome do alimento é obrigatório.</span>';
+            showMessage('custom-food-message', 'Erro: O nome do alimento é obrigatório.', 'text-red-500');
             return;
         }
         if (FULL_FOOD_DATABASE.hasOwnProperty(newFoodName)) {
-            messageEl.innerHTML = '<span class="text-red-500">Erro: Alimento já existe. Use um nome único.</span>';
+            showMessage('custom-food-message', 'Erro: Alimento já existe. Use um nome único.', 'text-red-500');
             return;
         }
         if (isNaN(newCalories) || newCalories < 0 || isNaN(newProtein) || newProtein < 0 || isNaN(newCarbs) || newCarbs < 0 || isNaN(newFats) || newFats < 0) {
-            messageEl.innerHTML = '<span class="text-red-500">Erro: Todos os valores nutricionais devem ser números válidos (≥ 0).</span>';
+            showMessage('custom-food-message', 'Erro: Todos os valores nutricionais devem ser números válidos (≥ 0).', 'text-red-500');
             return;
         }
 
@@ -1547,11 +1897,10 @@
             carbs: newCarbs,
             fats: newFats,
             unit: unitInput.value.trim() || 'g',
-            portion: 100, // Alimentos customizados são sempre por 100g como padrão
+            portion: 100,
             category: 'Personalizado'
         };
 
-        // 1. Carrega a lista atual de alimentos do usuário
         let userFoods = {};
         try {
             const storedFoods = localStorage.getItem(USER_FOODS_KEY);
@@ -1560,308 +1909,176 @@
             }
         } catch (error) { /* Ignora se estiver vazio */ }
 
-        // 2. Adiciona o novo alimento
         userFoods[newFoodName] = newFoodData;
 
-        // 3. Salva a nova lista e atualiza a base de dados completa do app
         localStorage.setItem(USER_FOODS_KEY, JSON.stringify(userFoods));
         mergeFoodDatabases();
 
-        // 4. Atualiza os formulários para que o novo alimento seja utilizável imediatamente
         setupFoodForms(); 
+        setupMealTemplateForms();
         
-        messageEl.innerHTML = `<span class="text-primary">Alimento "${newFoodName}" adicionado com sucesso!</span>`;
+        showMessage('custom-food-message', `Alimento "${newFoodName}" adicionado com sucesso!`, 'text-primary');
         this.reset();
     });
 
-    /**
-     * Listener para o novo formulário de Metas de Macros
-     */
-    document.getElementById('set-macro-goal-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const proteinInput = document.getElementById('protein-goal-input');
-        const carbsInput = document.getElementById('carbs-goal-input');
-        const fatsInput = document.getElementById('fats-goal-input');
-        const messageEl = document.getElementById('macro-goal-message');
-        
-        const newProtein = parseInt(proteinInput.value);
-        const newCarbs = parseInt(carbsInput.value);
-        const newFats = parseInt(fatsInput.value);
-        
-        messageEl.innerHTML = ''; // Limpa mensagens
-
-        if (isNaN(newProtein) || newProtein < 10 || 
-            isNaN(newCarbs) || newCarbs < 10 || 
-            isNaN(newFats) || newFats < 5) {
+    // Listener para Adicionar Item ao Template (no modal)
+    if (document.getElementById('add-item-to-template')) {
+        document.getElementById('add-item-to-template').addEventListener('click', () => {
+            const foodName = document.getElementById('template-food-name').value.trim();
+            const quantity = parseFloat(document.getElementById('template-food-quantity').value);
+            const foodInfo = FULL_FOOD_DATABASE[foodName];
             
-            messageEl.innerHTML = '<span class="text-red-500">Erro: Insira valores mínimos válidos (P: ≥10g, C: ≥10g, G: ≥5g).</span>';
-            return;
-        }
+            if (!foodName || !foodInfo) {
+                showMessage('template-manager-message', 'Erro: Selecione um alimento válido da lista.', 'text-red-500');
+                return;
+            }
+            if (isNaN(quantity) || quantity <= 0) {
+                showMessage('template-manager-message', 'Erro: Quantidade inválida.', 'text-red-500');
+                return;
+            }
 
-        appData.proteinGoal = newProtein;
-        appData.carbsGoal = newCarbs;
-        appData.fatsGoal = newFats;
-        
-        saveData();
-        renderSettings();
-        renderDailySummary();
-        
-        messageEl.innerHTML = '<span class="text-primary">Metas de Macronutrientes salvas com sucesso!</span>';
-    });
-    
-    /**
-     * Calcula o TDEE e define a nova meta calórica.
-     */
-    document.getElementById('tdee-calculator-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const gender = document.getElementById('calc-gender').value;
-        const age = parseFloat(document.getElementById('calc-age').value);
-        const height = parseFloat(document.getElementById('calc-height').value);
-        const weight = parseFloat(document.getElementById('calc-weight').value);
-        const activityMultiplier = parseFloat(document.getElementById('calc-activity').value);
-        
-        const resultsEl = document.getElementById('tdee-results');
-        const messageEl = document.getElementById('result-message');
-        
-        resultsEl.classList.add('hidden'); // Oculta por padrão
-        
-        if (!gender || isNaN(age) || isNaN(height) || isNaN(weight) || isNaN(activityMultiplier)) {
-            messageEl.textContent = 'Por favor, preencha todos os campos válidos.';
-            resultsEl.classList.remove('hidden');
-            return;
-        }
+            const newItem = {
+                name: foodName,
+                quantity: quantity,
+                unit: foodInfo.unit || 'g'
+            };
 
-        const bmr = calculateBMR(gender, weight, height, age);
-        const tdee = calculateTDEE(bmr, activityMultiplier);
-
-        // Atualiza a meta calórica
-        appData.calorieGoal = tdee;
-
-        // Salva os inputs no estado (opcional, para persistência do formulário)
-        appData.calcInputs = { gender, age, height, weight, activity: activityMultiplier };
-
-        saveData();
-        renderDailySummary();
-        
-        // Exibe os resultados
-        document.getElementById('result-bmr').textContent = `BMR (Metabolismo Basal): ${bmr} kcal`;
-        document.getElementById('result-tdee').textContent = `TDEE: ${tdee} kcal/dia`;
-        messageEl.textContent = `Meta calórica atualizada com sucesso para ${tdee} kcal.`;
-        document.getElementById('current-goal-display').textContent = `Meta Atual: ${tdee} kcal`;
-        resultsEl.classList.remove('hidden');
-    });
-
-
-    // --- INICIALIZAÇÃO E LISTENERS ---
-
-    // Listener para alteração da data na aba Alimentação.
-    document.getElementById('food-date-select').addEventListener('change', function() {
-        renderFood();
-    });
-    
-    // Listener para alteração da data na aba Treinos.
-    document.getElementById('workout-date-select').addEventListener('change', function() {
-        renderWorkouts();
-    });
-
-    // Listener para alteração da data na aba Progresso (Peso).
-    document.getElementById('content-area').addEventListener('change', function(e) {
-        if (e.target.id === 'weight-date-select') {
-            renderProgress();
-        }
-    });
-
-    /**
-     * Adiciona um novo exercício ao log.
-     */
-    document.getElementById('add-exercise-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        // O registro de treinos SEMPRE é feito na data ATUAL do sistema.
-        const registrationDate = new Date().toISOString().split('T')[0];
-        const dayLog = getCurrentDayLog(registrationDate);
-        
-        const exerciseName = document.getElementById('exercise-name').value;
-        const sets = parseInt(document.getElementById('exercise-sets').value);
-        const reps = parseInt(document.getElementById('exercise-reps').value);
-        const load = parseFloat(document.getElementById('exercise-load').value);
-
-        const newExercise = {
-            category: document.getElementById('exercise-category').value,
-            name: exerciseName,
-            sets: sets,
-            reps: reps,
-            load: load,
-        };
-
-        dayLog.workouts.push(newExercise);
-        dayLog.isWorkoutDone = true;
-        
-        // Lógica de PR: Só verifica se for exercício de FORÇA e tiver carga
-        if (newExercise.category !== 'Cardio' && newExercise.load > 0) {
-            updatePR(exerciseName, registrationDate, load, reps);
-        }
-
-        saveData();
-        renderWorkouts(); // Renderiza o dia que está sendo visualizado
-        renderDailySummary(); // Garante que o resumo do dia atual (se for hoje) seja atualizado
-
-        this.reset();
-        // Garante que o select de nome volte ao estado inicial (disabled)
-        document.getElementById('exercise-name').disabled = true;
-    });
-
-    /**
-     * Adiciona uma nova refeição ao log, usando os valores calculados.
-     */
-    document.getElementById('add-meal-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        // O registro de refeições SEMPRE é feito na data ATUAL do sistema.
-        const registrationDate = new Date().toISOString().split('T')[0];
-        const dayLog = getCurrentDayLog(registrationDate);
-        
-        const foodName = document.getElementById('food-name-input').value.trim();
-        const foodInfo = FULL_FOOD_DATABASE[foodName];
-        const quantity = parseFloat(document.getElementById('food-quantity').value);
-
-        if (!foodInfo || quantity <= 0) {
-            // Usando console.error/log em vez de alert
-            console.error("Alimento inválido ou quantidade zero/negativa. Por favor, selecione um alimento da lista.");
-            return;
-        }
-
-        const multiplier = quantity / (foodInfo.portion || 100);
-        const newMeal = {
-            type: document.getElementById('meal-type').value,
-            name: `${foodName} (${quantity} ${foodInfo.unit}(s))`, // Nome agora inclui quantidade e unidade
-            calories: Math.round(foodInfo.calories * multiplier),
-            protein: parseFloat((foodInfo.protein * multiplier).toFixed(1)),
-            carbs: parseFloat((foodInfo.carbs * multiplier).toFixed(1)),
-            fats: parseFloat((foodInfo.fats * multiplier).toFixed(1)),
-        };
-
-        dayLog.meals.push(newMeal);
-        saveData();
-        
-        // Atualiza o log de alimentação e o resumo do dia atual (se for hoje)
-        renderFood();
-        if(document.getElementById('food-date-select').value === appData.currentDate) {
-            renderDailySummary();
-        }
-        
-        this.reset();
-        setupFoodForms(); // Reseta a pré-visualização para 0
-    });
-
-    /**
-     * Adiciona o peso corporal.
-     */
-    document.getElementById('add-weight-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const dateInput = document.getElementById('weight-date-select');
-        const weightInput = document.getElementById('current-weight');
-
-        const date = dateInput.value;
-        const newWeight = parseFloat(weightInput.value);
-
-        if (!date || isNaN(newWeight) || newWeight <= 0) {
-            console.error("Data ou peso inválidos.");
-            return;
-        }
-        
-        // Remove a entrada existente para a data, se houver
-        appData.weightHistory = appData.weightHistory.filter(w => w.date !== date);
-
-        appData.weightHistory.push({
-            date: date,
-            weight: newWeight
+            appData.templateEditorStaging.push(newItem);
+            renderTemplateComposition();
+            
+            document.getElementById('template-food-name').value = '';
+            document.getElementById('template-food-quantity').value = 100;
+            document.getElementById('template-food-unit-display').value = 'Unidade';
+            showMessage('template-manager-message', 'Item adicionado ao prato!', 'text-blue-500');
         });
+    }
 
-        appData.weightHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Listener para Salvar Prato (no modal)
+    document.getElementById('template-editor-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const templateName = document.getElementById('template-name-input').value.trim();
         
-        renderProgress(); // Renderiza o display e os gráficos
+        if (!templateName) {
+            showMessage('template-manager-message', 'Erro: O nome do prato é obrigatório.', 'text-red-500');
+            return;
+        }
+
+        if (appData.templateEditorStaging.length === 0) {
+            showMessage('template-manager-message', 'Erro: O prato deve ter pelo menos um item.', 'text-red-500');
+            return;
+        }
+
+        appData.mealTemplates[templateName] = appData.templateEditorStaging;
         saveData();
-        weightInput.value = '';
-        
-        // Volta a data para hoje após o registro (boa prática para apps mobile)
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.value = today;
+        setupMealTemplateForms();
+
+        showMessage('template-manager-message', `Prato "${templateName}" salvo/atualizado com sucesso!`, 'text-primary');
+        document.getElementById('template-name-input').dataset.originalName = templateName; // Marca como editado
     });
 
-    /**
-     * Função de deleção (refeição ou exercício).
-     */
+    // Listener para Deletar Prato (no modal)
+    document.getElementById('delete-template-btn').addEventListener('click', () => {
+        const templateName = document.getElementById('template-name-input').value.trim();
+
+        if (templateName && appData.mealTemplates.hasOwnProperty(templateName)) {
+            // Usando um modal simulado simples para confirmação
+            const confirmation = document.createElement('div');
+            confirmation.className = "fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4";
+            confirmation.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+                    <p class="text-lg font-bold mb-4">Confirmar Exclusão</p>
+                    <p class="mb-6">Tem certeza que deseja apagar o prato "${templateName}"?</p>
+                    <div class="flex justify-end gap-3">
+                        <button id="modal-cancel" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cancelar</button>
+                        <button id="modal-confirm" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Confirmar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmation);
+
+            document.getElementById('modal-confirm').addEventListener('click', () => {
+                delete appData.mealTemplates[templateName];
+                saveData();
+                setupMealTemplateForms();
+                openTemplateManager(null); // Fecha e abre em modo novo
+                document.body.removeChild(confirmation);
+                showMessage('template-manager-message', `Prato deletado.`, 'text-red-500');
+            });
+            document.getElementById('modal-cancel').addEventListener('click', () => {
+                document.body.removeChild(confirmation);
+            });
+        } else {
+            showMessage('template-manager-message', 'Erro: Nenhum prato válido selecionado para deletar.', 'text-red-500');
+        }
+    });
+
+    // NOVO: DELEGAÇÃO DE EVENTOS PARA ITENS DO TEMPLATE STAGING
+    document.getElementById('template-composition-list').addEventListener('click', function(e) {
+        if (e.target.closest('.remove-template-item')) {
+            const button = e.target.closest('.remove-template-item');
+            const index = parseInt(button.dataset.index);
+            
+            if (!isNaN(index) && index >= 0 && index < appData.templateEditorStaging.length) {
+                appData.templateEditorStaging.splice(index, 1);
+                renderTemplateComposition(); // Re-renderiza a lista de itens
+                showMessage('template-manager-message', 'Item removido do prato.', 'text-blue-500');
+            }
+        }
+    });
+
+    // Listener delegado para exclusão de refeições e treinos
     document.getElementById('content-area').addEventListener('click', function(e) {
         if (e.target.closest('.delete-item-btn')) {
             const button = e.target.closest('.delete-item-btn');
             const index = parseInt(button.dataset.index);
-            const type = button.dataset.type;
-            const date = button.dataset.date || appData.currentDate;
+            const type = button.dataset.type; // 'meal' or 'workout'
+            const date = button.dataset.date;
+
+            const targetElement = type === 'meal' ? 'meal-form-message' : 'exercise-form-message';
+            const itemType = type === 'meal' ? 'refeição' : 'exercício';
             
-            const log = appData.dailyLogs[date];
-
-            if (!log) return;
-
-            if (type === 'workout') {
-                log.workouts.splice(index, 1);
-                saveData();
-                renderWorkouts(); 
-            } else if (type === 'meal') {
-                log.meals.splice(index, 1);
-                saveData();
-                renderFood();
+            if (!date || isNaN(index)) {
+                 showMessage(targetElement, `Erro: Falha ao identificar o item de ${itemType}.`, 'text-red-500');
+                 return;
             }
-            if (date === appData.currentDate) {
-                renderDailySummary(); 
-            }
+
+            // Simulação de modal de confirmação para exclusão de item individual
+            const confirmation = document.createElement('div');
+            confirmation.className = "fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4";
+            confirmation.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+                    <p class="text-lg font-bold mb-4">Confirmar Exclusão</p>
+                    <p class="mb-6">Tem certeza que deseja apagar este ${itemType}?</p>
+                    <div class="flex justify-end gap-3">
+                        <button id="modal-cancel-item" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cancelar</button>
+                        <button id="modal-confirm-item" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Confirmar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmation);
+
+            document.getElementById('modal-confirm-item').addEventListener('click', () => {
+                const dayLog = getCurrentDayLog(date);
+                
+                if (type === 'meal') {
+                    dayLog.meals.splice(index, 1);
+                    saveData();
+                    renderFood();
+                } else if (type === 'workout') {
+                    dayLog.workouts.splice(index, 1);
+                    dayLog.isWorkoutDone = dayLog.workouts.length > 0;
+                    saveData();
+                    renderWorkouts();
+                }
+                
+                document.body.removeChild(confirmation);
+                showMessage(targetElement, `${itemType} excluído.`, 'text-red-500');
+            });
+            document.getElementById('modal-cancel-item').addEventListener('click', () => {
+                document.body.removeChild(confirmation);
+            });
         }
     });
-
-    // --- RESET DE DADOS (Modal Logic) ---
-    const resetModal = document.getElementById('reset-modal');
-    document.getElementById('reset-data-button').addEventListener('click', () => {
-        resetModal.classList.remove('hidden');
-    });
-
-    document.getElementById('cancel-reset').addEventListener('click', () => {
-        resetModal.classList.add('hidden');
-    });
-
-    document.getElementById('confirm-reset').addEventListener('click', () => {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(USER_FOODS_KEY); // Remove a lista de alimentos personalizados
-        
-        // Reseta o estado da aplicação
-        appData = {
-            calorieGoal: 2000,
-            proteinGoal: 150, 
-            carbsGoal: 200,   
-            fatsGoal: 60, 
-            currentDate: new Date().toISOString().split('T')[0],
-            dailyLogs: {},
-            weightHistory: [],
-            prHistory: {}, // Zera o histórico de PRs
-            calcInputs: {}
-        };
-        saveData(); // Salva o estado resetado
-        mergeFoodDatabases(); // Recarrega a base de dados padrão
-        
-        resetModal.classList.add('hidden');
-        changeTab('workouts'); // Volta para a tela principal
-        renderSettings();
-        setupFoodForms(); // Recarrega os datalists
-        setupExerciseForms(); // Recarrega os selects
-        console.log("Todos os dados foram resetados.");
-    });
-
-
-    // --- FUNÇÕES DE CONFIGURAÇÃO (MOVIDAS PARA CIMA DO DOMContentLoaded) ---
-    
-    // (As funções changeTab, setupExerciseForms, setupFoodForms, renderProgress, renderWeightChart, renderCalorieChart, renderSettings
-    // e os listeners de formulário estão definidos acima do bloco DOMContentLoaded)
-
 
     // --- INICIALIZAÇÃO ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -1870,7 +2087,8 @@
 
         // Configura os formulários (deve ser feito após o loadData)
         setupExerciseForms();
-        setupFoodForms(); // Agora carrega alimentos fixos + personalizados
+        setupFoodForms(); 
+        setupMealTemplateForms(); // Carrega os templates de refeição
 
         // Adiciona listeners para os botões de navegação
         document.querySelectorAll('.nav-icon').forEach(button => {
